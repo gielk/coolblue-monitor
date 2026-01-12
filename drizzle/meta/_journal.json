@@ -1,5 +1,20 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1768213940649,
+      "tag": "0000_peaceful_prism",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1768214144619,
+      "tag": "0001_round_korg",
+      "breakpoints": true
+    }
+  ]
 }

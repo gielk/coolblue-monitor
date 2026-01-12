@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { checkHistory, InsertCheckHistory, InsertMonitoredProduct, monitoredProducts, InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,66 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getUserProducts(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).where(eq(users.id, userId)).limit(1);
+}
+
+export async function getMonitoredProducts(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(monitoredProducts).where(eq(monitoredProducts.userId, userId)).orderBy((t) => t.createdAt);
+}
+
+export async function getMonitoredProductById(productId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(monitoredProducts)
+    .where(and(eq(monitoredProducts.id, productId), eq(monitoredProducts.userId, userId)))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createMonitoredProduct(product: InsertMonitoredProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(monitoredProducts).values(product);
+  return result;
+}
+
+export async function updateMonitoredProduct(productId: number, userId: number, updates: Partial<InsertMonitoredProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .update(monitoredProducts)
+    .set(updates)
+    .where(and(eq(monitoredProducts.id, productId), eq(monitoredProducts.userId, userId)));
+}
+
+export async function deleteMonitoredProduct(productId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .delete(monitoredProducts)
+    .where(and(eq(monitoredProducts.id, productId), eq(monitoredProducts.userId, userId)));
+}
+
+export async function addCheckHistory(history: InsertCheckHistory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(checkHistory).values(history);
+}
+
+export async function getProductCheckHistory(productId: number, limit: number = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(checkHistory)
+    .where(eq(checkHistory.productId, productId))
+    .orderBy((t) => t.checkedAt)
+    .limit(limit);
+}
