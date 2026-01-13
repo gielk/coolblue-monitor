@@ -31,13 +31,21 @@
 - [x] Include product details in emails
 - [ ] Setup actual email service integration (Resend/SendGrid)
 
-## Phase 6: Testing & Optimization
+## Phase 6: Edit Functionality
+- [x] Add edit procedure to tRPC router
+- [x] Build edit modal in Dashboard UI
+- [x] Add refresh status functionality
+- [x] Show current status when editing
+- [x] Improve Tweede Kans detection in scraper
+- [x] Test scraper with provided product URLs
+
+## Phase 7: Testing & Optimization
 - [x] Write vitest tests for scraper
-- [ ] Write vitest tests for job scheduler
+- [x] Write vitest tests for auth logout
 - [ ] Test email notifications
 - [ ] Performance optimization
 
-## Phase 7: Deployment
+## Phase 8: Deployment
 - [ ] Final testing
 - [ ] Create checkpoint
 - [ ] Deploy to production
