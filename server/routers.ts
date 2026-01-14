@@ -2,8 +2,9 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createMonitoredProduct, deleteMonitoredProduct, getMonitoredProductById, getMonitoredProducts, updateMonitoredProduct, addCheckHistory } from "./db";
+import { createMonitoredProduct, deleteMonitoredProduct, getMonitoredProductById, getMonitoredProducts, updateMonitoredProduct, addCheckHistory, getEmailSettings, upsertEmailSettings } from "./db";
 import { scrapeProductData } from "./scraper";
 
 export const appRouter = router({
@@ -52,7 +53,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const product = await getMonitoredProductById(input.productId, ctx.user.id);
-        if (!product) throw new Error("Product not found");
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
         
         return updateMonitoredProduct(input.productId, ctx.user.id, {
           productUrl: input.productUrl,
@@ -66,7 +67,7 @@ export const appRouter = router({
       .input(z.object({ productId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const product = await getMonitoredProductById(input.productId, ctx.user.id);
-        if (!product) throw new Error("Product not found");
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
         
         return deleteMonitoredProduct(input.productId, ctx.user.id);
       }),
@@ -79,7 +80,7 @@ export const appRouter = router({
       .input(z.object({ productId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const product = await getMonitoredProductById(input.productId, ctx.user.id);
-        if (!product) throw new Error("Product not found");
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
         
         try {
           // Scrape current product data
@@ -118,8 +119,46 @@ export const appRouter = router({
             errorMessage: error instanceof Error ? error.message : "Unknown error",
           });
           
-          throw new Error(error instanceof Error ? error.message : "Failed to refresh product status");
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Failed to refresh product status" });
         }
+      }),
+  }),
+
+  emailSettings: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return getEmailSettings(ctx.user.id);
+    }),
+    
+    update: protectedProcedure
+      .input(
+        z.object({
+          smtpHost: z.string().optional(),
+          smtpPort: z.number().optional(),
+          smtpUser: z.string().optional(),
+          smtpPassword: z.string().optional(),
+          fromEmail: z.string().email().optional(),
+          fromName: z.string().optional(),
+          useResend: z.boolean().optional(),
+          resendApiKey: z.string().optional(),
+          useSendGrid: z.boolean().optional(),
+          sendGridApiKey: z.string().optional(),
+          notificationsEnabled: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await upsertEmailSettings(ctx.user.id, input);
+        return { success: true };
+      }),
+    
+    testEmail: protectedProcedure
+      .input(z.object({ testEmail: z.string().email() }))
+      .mutation(async ({ ctx, input }) => {
+        const settings = await getEmailSettings(ctx.user.id);
+        if (!settings) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Email settings not configured" });
+        }
+        // TODO: Implement actual email sending
+        return { success: true, message: "Test email would be sent to " + input.testEmail };
       }),
   }),
 });

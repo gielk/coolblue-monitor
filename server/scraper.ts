@@ -75,25 +75,26 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
       if (hasTweedeKansSection) {
         tweedeKansAvailable = true;
         
-        // Extract prices from the section
-        // Pattern: "Voordelige Tweedekans" followed by "van" and then the price
-        const tweedeKansPattern = /Voordelige\s+Tweedekans[^€]*van[^€]*€\s*([\d.,]+)/i;
+        // Extract Tweede Kans price from "Voordelige Tweedekans van €XXX,-" pattern
+        const tweedeKansPattern = /Voordelige\s+Tweedekans[^€]*van\s+€\s*([\d.,]+)/i;
         const tweedeKansMatch = html.match(tweedeKansPattern);
         
         if (tweedeKansMatch) {
           tweedeKansPrice = parsePriceTocents(tweedeKansMatch[1]);
         }
         
-        // Extract original price (usually the main price on the page)
-        // Look for "Adviesprijs" or the first prominent price
+        // Extract original price - look for "Adviesprijs" followed by prices
+        // Pattern: "Adviesprijs Samsung 899,- 699,-" (first is advice, second is current)
         const adviesprijs = html.match(/Adviesprijs[^€]*€\s*([\d.,]+)[^€]*€\s*([\d.,]+)/i);
         if (adviesprijs) {
-          originalPrice = parsePriceTocents(adviesprijs[2]); // Second price is usually the current price
+          // First price after "Adviesprijs" is the advice price (crossed out)
+          // Second price is the current selling price
+          originalPrice = parsePriceTocents(adviesprijs[2]);
         } else {
-          // Fallback: get all prices and use the first one
-          const allPrices = html.match(/€\s*([\d.,]+)/g);
-          if (allPrices && allPrices.length >= 1) {
-            originalPrice = parsePriceTocents(allPrices[0]);
+          // Fallback: look for the first price on the page
+          const firstPrice = html.match(/€\s*([\d.,]+)/);
+          if (firstPrice) {
+            originalPrice = parsePriceTocents(firstPrice[1]);
           }
         }
       }

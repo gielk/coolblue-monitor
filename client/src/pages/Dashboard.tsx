@@ -141,6 +141,9 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-600">{user?.name}</span>
+            <Button onClick={() => navigate("/settings")} variant="outline" className="gap-2">
+              ⚙️ Instellingen
+            </Button>
             <Button onClick={() => navigate("/")} variant="outline">
               Home
             </Button>

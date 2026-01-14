@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { checkHistory, InsertCheckHistory, InsertMonitoredProduct, monitoredProducts, InsertUser, users } from "../drizzle/schema";
+import { checkHistory, InsertCheckHistory, InsertMonitoredProduct, monitoredProducts, InsertUser, users, emailSettings, InsertEmailSettings } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -151,4 +151,36 @@ export async function getProductCheckHistory(productId: number, limit: number = 
     .where(eq(checkHistory.productId, productId))
     .orderBy((t) => t.checkedAt)
     .limit(limit);
+}
+
+export async function getEmailSettings(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db
+    .select()
+    .from(emailSettings)
+    .where(eq(emailSettings.userId, userId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertEmailSettings(userId: number, settings: Partial<InsertEmailSettings>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await getEmailSettings(userId);
+
+  if (existing) {
+    await db
+      .update(emailSettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(emailSettings.userId, userId));
+  } else {
+    await db.insert(emailSettings).values({
+      userId,
+      ...settings,
+    });
+  }
 }

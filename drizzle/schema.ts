@@ -46,6 +46,27 @@ export const monitoredProducts = mysqlTable("monitored_products", {
 export type MonitoredProduct = typeof monitoredProducts.$inferSelect;
 export type InsertMonitoredProduct = typeof monitoredProducts.$inferInsert;
 
+export const emailSettings = mysqlTable("emailSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  smtpHost: varchar("smtpHost", { length: 255 }),
+  smtpPort: int("smtpPort"),
+  smtpUser: varchar("smtpUser", { length: 255 }),
+  smtpPassword: text("smtpPassword"), // Encrypted in production
+  fromEmail: varchar("fromEmail", { length: 255 }),
+  fromName: varchar("fromName", { length: 255 }),
+  useResend: boolean("useResend").default(false),
+  resendApiKey: text("resendApiKey"), // Encrypted in production
+  useSendGrid: boolean("useSendGrid").default(false),
+  sendGridApiKey: text("sendGridApiKey"), // Encrypted in production
+  notificationsEnabled: boolean("notificationsEnabled").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailSettings = typeof emailSettings.$inferSelect;
+export type InsertEmailSettings = typeof emailSettings.$inferInsert;
+
 export const checkHistory = mysqlTable("check_history", {
   id: int("id").autoincrement().primaryKey(),
   productId: int("productId").notNull().references(() => monitoredProducts.id, { onDelete: "cascade" }),

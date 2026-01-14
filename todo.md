@@ -49,3 +49,10 @@
 - [ ] Final testing
 - [ ] Create checkpoint
 - [ ] Deploy to production
+
+
+## New Issues & Fixes
+- [x] Fix scraper prijs-extractie (huidige prijs vs Tweede Kans prijs)
+- [x] Voeg email settings pagina toe
+- [x] Implementeer email configuratie (SMTP/API keys)
+- [x] Voeg email test functionaliteit toe
