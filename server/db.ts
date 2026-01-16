@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { checkHistory, InsertCheckHistory, InsertMonitoredProduct, monitoredProducts, InsertUser, users, emailSettings, InsertEmailSettings } from "../drizzle/schema";
+import { checkHistory, InsertCheckHistory, InsertMonitoredProduct, monitoredProducts, InsertUser, users, emailSettings, InsertEmailSettings, priceHistory, InsertPriceHistory } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -183,4 +183,22 @@ export async function upsertEmailSettings(userId: number, settings: Partial<Inse
       ...settings,
     });
   }
+}
+
+
+export async function addPriceHistory(history: InsertPriceHistory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(priceHistory).values(history);
+}
+
+export async function getPriceHistory(productId: number, limit: number = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(priceHistory)
+    .where(eq(priceHistory.productId, productId))
+    .orderBy((t) => t.recordedAt)
+    .limit(limit);
 }

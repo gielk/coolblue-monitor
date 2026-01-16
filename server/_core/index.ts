@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { startMonitoringScheduler } from "../jobs";
+import { setEmailConfig } from "../email";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -59,6 +61,18 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    
+    // Start monitoring scheduler
+    if (process.env.GMAIL_EMAIL && process.env.GMAIL_APP_PASSWORD) {
+      console.log("[Server] Configuring Gmail for email notifications");
+      setEmailConfig({
+        gmailEmail: process.env.GMAIL_EMAIL,
+        gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
+      });
+      startMonitoringScheduler(300); // Check every 5 minutes
+    } else {
+      console.warn("[Server] GMAIL_EMAIL and GMAIL_APP_PASSWORD not set. Email notifications disabled.");
+    }
   });
 }
 

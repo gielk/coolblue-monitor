@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Trash2, Edit2, RefreshCw, Plus, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { PriceChart } from "@/components/PriceChart";
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
+  const [selectedProductForChart, setSelectedProductForChart] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState({
     productUrl: "",
     userEmail: "",
@@ -26,6 +28,11 @@ export default function Dashboard() {
   const { data: products, isLoading } = trpc.products.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+
+  const { data: priceHistoryData, isLoading: priceHistoryLoading } = trpc.priceHistory.get.useQuery(
+    { productId: selectedProductForChart || 0 },
+    { enabled: isAuthenticated && selectedProductForChart !== null }
+  );
 
   const addMutation = trpc.products.add.useMutation({
     onSuccess: () => {
@@ -298,6 +305,14 @@ export default function Dashboard() {
                         size="sm"
                         variant="outline"
                         className="flex-1 gap-2"
+                        onClick={() => setSelectedProductForChart(product.id)}
+                      >
+                        📊 Grafiek
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-2"
                         onClick={() => refreshMutation.mutate({ productId: product.id })}
                         disabled={refreshMutation.isPending}
                       >
@@ -457,6 +472,24 @@ export default function Dashboard() {
             </Card>
           )}
         </div>
+
+        {/* Price Chart Section */}
+        {selectedProductForChart && products && (
+          <div className="mt-8">
+            <PriceChart
+              data={priceHistoryData || []}
+              productName={products.find((p) => p.id === selectedProductForChart)?.productName || "Product"}
+              isLoading={priceHistoryLoading}
+            />
+            <Button
+              onClick={() => setSelectedProductForChart(null)}
+              variant="outline"
+              className="mt-4"
+            >
+              Grafiek Sluiten
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

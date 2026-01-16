@@ -67,6 +67,18 @@ export const emailSettings = mysqlTable("emailSettings", {
 export type EmailSettings = typeof emailSettings.$inferSelect;
 export type InsertEmailSettings = typeof emailSettings.$inferInsert;
 
+export const priceHistory = mysqlTable("priceHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull().references(() => monitoredProducts.id, { onDelete: "cascade" }),
+  originalPrice: int("originalPrice"), // in cents
+  tweedeKansPrice: int("tweedeKansPrice"), // in cents
+  tweedeKansAvailable: boolean("tweedeKansAvailable").default(false),
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+
+export type PriceHistory = typeof priceHistory.$inferSelect;
+export type InsertPriceHistory = typeof priceHistory.$inferInsert;
+
 export const checkHistory = mysqlTable("check_history", {
   id: int("id").autoincrement().primaryKey(),
   productId: int("productId").notNull().references(() => monitoredProducts.id, { onDelete: "cascade" }),

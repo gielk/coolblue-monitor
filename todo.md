@@ -56,3 +56,30 @@
 - [x] Voeg email settings pagina toe
 - [x] Implementeer email configuratie (SMTP/API keys)
 - [x] Voeg email test functionaliteit toe
+
+
+## Phase 3: Email & Background Jobs & Price Tracking
+- [ ] Implementeer Google Gmail SMTP email service
+- [ ] Voeg nodemailer package toe
+- [ ] Maak email templates voor Tweede Kans notificaties
+- [ ] Implementeer background job scheduler
+- [ ] Test email verzending met Google app wachtwoord
+- [ ] Voeg prijs tracking database schema toe
+- [ ] Implementeer prijs tracking logica in jobs
+- [ ] Voeg prijs grafiek toe aan dashboard
+- [ ] Test volledige workflow end-to-end
+
+
+## Phase 3: Email & Background Jobs - Completed
+- [x] Installeer nodemailer package
+- [x] Implementeer Google Gmail SMTP email service
+- [x] Maak email templates voor Tweede Kans notificaties
+- [x] Voeg prijs tracking database schema toe
+- [x] Implementeer prijs tracking logica in jobs
+- [x] Implementeer background job scheduler (elke 5 minuten)
+- [x] Voeg Gmail credentials validation test toe
+- [x] Integreer monitoring scheduler in server startup
+- [x] Voeg prijs grafiek component toe (PriceChart)
+- [x] Integreer PriceChart in Dashboard
+- [x] Voeg grafiek knop toe aan product cards
+- [x] Alle tests slagen (7 tests)

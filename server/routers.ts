@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createMonitoredProduct, deleteMonitoredProduct, getMonitoredProductById, getMonitoredProducts, updateMonitoredProduct, addCheckHistory, getEmailSettings, upsertEmailSettings } from "./db";
+import { createMonitoredProduct, deleteMonitoredProduct, getMonitoredProductById, getMonitoredProducts, updateMonitoredProduct, addCheckHistory, getEmailSettings, upsertEmailSettings, getPriceHistory } from "./db";
 import { scrapeProductData } from "./scraper";
 
 export const appRouter = router({
@@ -121,6 +121,16 @@ export const appRouter = router({
           
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Failed to refresh product status" });
         }
+      }),
+  }),
+
+  priceHistory: router({
+    get: protectedProcedure
+      .input(z.object({ productId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const product = await getMonitoredProductById(input.productId, ctx.user.id);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+        return getPriceHistory(input.productId, 100);
       }),
   }),
 
