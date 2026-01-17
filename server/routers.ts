@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createMonitoredProduct, deleteMonitoredProduct, getMonitoredProductById, getMonitoredProducts, updateMonitoredProduct, addCheckHistory, getEmailSettings, upsertEmailSettings, getPriceHistory } from "./db";
+import { createMonitoredProduct, deleteMonitoredProduct, getMonitoredProductById, getMonitoredProducts, updateMonitoredProduct, addCheckHistory, getEmailSettings, upsertEmailSettings, getPriceHistory, createNotification, getUserNotifications, getUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, getNotificationPreferences, upsertNotificationPreferences } from "./db";
 import { scrapeProductData } from "./scraper";
 
 export const appRouter = router({
@@ -169,6 +169,80 @@ export const appRouter = router({
         }
         // TODO: Implement actual email sending
         return { success: true, message: "Test email would be sent to " + input.testEmail };
+      }),
+  }),
+
+  notifications: router({
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return getUserNotifications(ctx.user.id, input?.limit || 50);
+      }),
+
+    unread: protectedProcedure.query(async ({ ctx }) => {
+      return getUnreadNotifications(ctx.user.id);
+    }),
+
+    markAsRead: protectedProcedure
+      .input(z.object({ notificationId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const notification = await getUserNotifications(ctx.user.id, 1);
+        if (!notification.find((n) => n.id === input.notificationId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Notification not found" });
+        }
+        await markNotificationAsRead(input.notificationId);
+        return { success: true };
+      }),
+
+    markAllAsRead: protectedProcedure.mutation(async ({ ctx }) => {
+      await markAllNotificationsAsRead(ctx.user.id);
+      return { success: true };
+    }),
+
+    delete: protectedProcedure
+      .input(z.object({ notificationId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const notification = await getUserNotifications(ctx.user.id, 1);
+        if (!notification.find((n) => n.id === input.notificationId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Notification not found" });
+        }
+        await deleteNotification(input.notificationId);
+        return { success: true };
+      }),
+  }),
+
+  notificationPreferences: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const prefs = await getNotificationPreferences(ctx.user.id);
+      if (!prefs) {
+        // Return default preferences if not set
+        return {
+          userId: ctx.user.id,
+          emailNotifications: true,
+          pushNotifications: true,
+          inAppNotifications: true,
+          tweedeKansNotifications: true,
+          productUpdatesNotifications: false,
+          errorNotifications: true,
+        };
+      }
+      return prefs;
+    }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          emailNotifications: z.boolean().optional(),
+          pushNotifications: z.boolean().optional(),
+          inAppNotifications: z.boolean().optional(),
+          tweedeKansNotifications: z.boolean().optional(),
+          productUpdatesNotifications: z.boolean().optional(),
+          errorNotifications: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await upsertNotificationPreferences(ctx.user.id, input);
+        return { success: true };
       }),
   }),
 });

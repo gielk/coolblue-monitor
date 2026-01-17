@@ -92,3 +92,35 @@ export const checkHistory = mysqlTable("check_history", {
 
 export type CheckHistory = typeof checkHistory.$inferSelect;
 export type InsertCheckHistory = typeof checkHistory.$inferInsert;
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productId: int("productId").references(() => monitoredProducts.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 50 }).notNull(), // 'tweedekans_available', 'product_added', 'product_error', 'system'
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  actionUrl: text("actionUrl"), // URL to navigate to when clicked
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  readAt: timestamp("readAt"),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+export const notificationPreferences = mysqlTable("notificationPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  emailNotifications: boolean("emailNotifications").default(true).notNull(),
+  pushNotifications: boolean("pushNotifications").default(true).notNull(),
+  inAppNotifications: boolean("inAppNotifications").default(true).notNull(),
+  tweedeKansNotifications: boolean("tweedeKansNotifications").default(true).notNull(),
+  productUpdatesNotifications: boolean("productUpdatesNotifications").default(false).notNull(),
+  errorNotifications: boolean("errorNotifications").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreferences = typeof notificationPreferences.$inferInsert;

@@ -12,6 +12,7 @@ import { AlertCircle, Trash2, Edit2, RefreshCw, Plus, CheckCircle2, Clock, Alert
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { PriceChart } from "@/components/PriceChart";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
@@ -148,6 +149,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-600">{user?.name}</span>
+            <NotificationCenter />
             <Button onClick={() => navigate("/settings")} variant="outline" className="gap-2">
               ⚙️ Instellingen
             </Button>

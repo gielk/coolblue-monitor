@@ -83,3 +83,15 @@
 - [x] Integreer PriceChart in Dashboard
 - [x] Voeg grafiek knop toe aan product cards
 - [x] Alle tests slagen (7 tests)
+
+
+## Phase 4: Custom Notifications System - Completed
+- [x] Voeg notifications tabel toe aan database schema
+- [x] Voeg notificationPreferences tabel toe
+- [x] Implementeer notificatie query helpers in db.ts
+- [x] Maak notificatie service (createNotification, markAsRead, etc)
+- [x] Voeg tRPC procedures toe voor notificaties
+- [x] Bouw NotificationCenter component
+- [x] Integreer NotificationCenter in Dashboard
+- [x] Voeg notificatie voorkeuren tab toe aan Settings
+- [x] Alle tests slagen (7 tests)

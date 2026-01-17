@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { checkHistory, InsertCheckHistory, InsertMonitoredProduct, monitoredProducts, InsertUser, users, emailSettings, InsertEmailSettings, priceHistory, InsertPriceHistory } from "../drizzle/schema";
+import { checkHistory, InsertCheckHistory, InsertMonitoredProduct, monitoredProducts, InsertUser, users, emailSettings, InsertEmailSettings, priceHistory, InsertPriceHistory, notifications, InsertNotification, notificationPreferences, InsertNotificationPreferences } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -201,4 +201,87 @@ export async function getPriceHistory(productId: number, limit: number = 30) {
     .where(eq(priceHistory.productId, productId))
     .orderBy((t) => t.recordedAt)
     .limit(limit);
+}
+
+
+// Notification helpers
+export async function createNotification(notification: InsertNotification) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(notifications).values(notification);
+}
+
+export async function getUserNotifications(userId: number, limit: number = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy((t) => t.createdAt)
+    .limit(limit);
+}
+
+export async function getUnreadNotifications(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(notifications)
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)))
+    .orderBy((t) => t.createdAt);
+}
+
+export async function markNotificationAsRead(notificationId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .update(notifications)
+    .set({ isRead: true, readAt: new Date() })
+    .where(eq(notifications.id, notificationId));
+}
+
+export async function markAllNotificationsAsRead(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .update(notifications)
+    .set({ isRead: true, readAt: new Date() })
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+}
+
+export async function deleteNotification(notificationId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(notifications).where(eq(notifications.id, notificationId));
+}
+
+export async function getNotificationPreferences(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(notificationPreferences)
+    .where(eq(notificationPreferences.userId, userId))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function upsertNotificationPreferences(userId: number, prefs: Partial<InsertNotificationPreferences>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await getNotificationPreferences(userId);
+
+  if (existing) {
+    return db
+      .update(notificationPreferences)
+      .set({ ...prefs, updatedAt: new Date() })
+      .where(eq(notificationPreferences.userId, userId));
+  } else {
+    return db.insert(notificationPreferences).values({
+      userId,
+      ...prefs,
+    });
+  }
 }

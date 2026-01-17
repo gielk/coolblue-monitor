@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { AlertCircle, Mail, Settings as SettingsIcon, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Mail, Settings as SettingsIcon, CheckCircle2, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -21,6 +21,20 @@ export default function Settings() {
   const utils = trpc.useUtils();
   const { data: emailSettings, isLoading } = trpc.emailSettings.get.useQuery(undefined, {
     enabled: isAuthenticated,
+  });
+
+  const { data: notificationPrefs } = trpc.notificationPreferences.get.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const updatePrefsMutation = trpc.notificationPreferences.update.useMutation({
+    onSuccess: () => {
+      toast.success("Notificatie instellingen opgeslagen!");
+      utils.notificationPreferences.get.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Fout: ${error.message}`);
+    },
   });
 
   const updateMutation = trpc.emailSettings.update.useMutation({
@@ -91,14 +105,18 @@ export default function Settings() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <Tabs defaultValue="email" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="email" className="gap-2">
                 <Mail className="w-4 h-4" />
                 Email Instellingen
               </TabsTrigger>
               <TabsTrigger value="notifications" className="gap-2">
-                <AlertCircle className="w-4 h-4" />
+                <Bell className="w-4 h-4" />
                 Notificaties
+              </TabsTrigger>
+              <TabsTrigger value="preferences" className="gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Voorkeuren
               </TabsTrigger>
             </TabsList>
 
@@ -369,6 +387,94 @@ export default function Settings() {
                             Zorg ervoor dat je email instellingen correct zijn geconfigureerd om notificaties te ontvangen.
                           </p>
                         </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Preferences Tab */}
+            <TabsContent value="preferences" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notificatie Voorkeuren</CardTitle>
+                  <CardDescription>
+                    Kies welke notificaties je wilt ontvangen
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {!notificationPrefs ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin inline-block">
+                        <AlertCircle className="w-8 h-8 text-blue-600" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">In-app Notificaties</h3>
+                          <p className="text-sm text-slate-600">Toasts in de applicatie</p>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs?.inAppNotifications ?? true}
+                          onCheckedChange={(checked) =>
+                            updatePrefsMutation.mutate({ inAppNotifications: checked })
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">Push Notificaties</h3>
+                          <p className="text-sm text-slate-600">Browser desktop notificaties</p>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs?.pushNotifications ?? true}
+                          onCheckedChange={(checked) =>
+                            updatePrefsMutation.mutate({ pushNotifications: checked })
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">Tweede Kans Beschikbaarheid</h3>
+                          <p className="text-sm text-slate-600">Notificaties wanneer producten beschikbaar zijn</p>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs?.tweedeKansNotifications ?? true}
+                          onCheckedChange={(checked) =>
+                            updatePrefsMutation.mutate({ tweedeKansNotifications: checked })
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">Product Updates</h3>
+                          <p className="text-sm text-slate-600">Notificaties over product wijzigingen</p>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs?.productUpdatesNotifications ?? false}
+                          onCheckedChange={(checked) =>
+                            updatePrefsMutation.mutate({ productUpdatesNotifications: checked })
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">Fout Notificaties</h3>
+                          <p className="text-sm text-slate-600">Waarschuwingen bij fouten</p>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs?.errorNotifications ?? true}
+                          onCheckedChange={(checked) =>
+                            updatePrefsMutation.mutate({ errorNotifications: checked })
+                          }
+                        />
                       </div>
                     </div>
                   )}

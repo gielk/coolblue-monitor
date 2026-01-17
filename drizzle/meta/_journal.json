@@ -29,6 +29,13 @@
       "when": 1768508793198,
       "tag": "0003_aspiring_dreaming_celestial",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1768686333972,
+      "tag": "0004_thin_wiccan",
+      "breakpoints": true
     }
   ]
 }
