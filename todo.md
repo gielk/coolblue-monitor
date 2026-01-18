@@ -95,3 +95,11 @@
 - [x] Integreer NotificationCenter in Dashboard
 - [x] Voeg notificatie voorkeuren tab toe aan Settings
 - [x] Alle tests slagen (7 tests)
+
+
+## Phase 5: Bug Fixes & UI Improvements - Completed
+- [x] Repareer scraper prijs-extractie (huidige prijs €998 wordt €300)
+- [x] Repareer product foto extractie (verkeerde afbeelding)
+- [x] Verbeter dashboard product card UI layout
+- [x] Test scraper met Samsung DV90DB7845GBU3 product
+- [x] Alle 12 tests slagen

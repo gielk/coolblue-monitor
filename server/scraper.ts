@@ -4,8 +4,9 @@ import * as cheerio from "cheerio";
 export interface ProductData {
   name: string;
   image?: string;
-  originalPrice?: number; // in cents
-  tweedeKansPrice?: number; // in cents
+  originalPrice?: number;
+  currentPrice?: number;
+  tweedeKansPrice?: number;
   tweedeKansAvailable: boolean;
 }
 
@@ -23,46 +24,78 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
     });
 
     const $ = cheerio.load(response.data);
-    const html = response.data;
+    let html = response.data;
     
-    // Extract product name
-    const name = $("h1").first().text().trim() || "Unknown Product";
+    // Remove SVG and script tags to avoid false price matches
+    html = html.replace(/<svg[\s\S]*?<\/svg>/g, "");
+    html = html.replace(/<script[\s\S]*?<\/script>/g, "");
     
-    // Extract product image
-    const image = $("img[alt*='product']").first().attr("src") || 
-                  $("img[alt*='Product']").first().attr("src") ||
-                  $("img[alt*='Samsung']").first().attr("src");
+    // Extract product name from h1 or title
+    let name = $("h1").first().text().trim();
+    if (!name) {
+      const titleMatch = html.match(/<title>([^|]+)/);
+      name = titleMatch ? titleMatch[1].trim() : "Unknown Product";
+    }
+    
+    // Extract product image - look for main product image, skip employee photos
+    const image = extractMainProductImage($, response.data); // Use original html for images
     
     // Detect if this is a Tweede Kans product
     const isProductTweedeKansPage = productUrl.includes("/product-tweedekans/");
-    const pageTitle = $("title").text();
-    const isTweedeKansTitle = pageTitle.toLowerCase().includes("tweedekans") || pageTitle.toLowerCase().includes("tweede kans");
     
     let tweedeKansAvailable = false;
     let originalPrice: number | undefined;
+    let currentPrice: number | undefined;
     let tweedeKansPrice: number | undefined;
 
-    if (isProductTweedeKansPage || isTweedeKansTitle) {
+    if (isProductTweedeKansPage) {
       // This is a Tweede Kans product page
       tweedeKansAvailable = true;
       
       // Extract prices from Tweede Kans page
-      // Look for "Nieuwprijs" pattern
-      const nieuwprijsPattern = /Nieuwprijs[^€]*€\s*([\d.,]+)[^€]*€\s*([\d.,]+)/i;
-      const nieuwprijsMatch = html.match(nieuwprijsPattern);
+      // Look for "Nieuwprijs" section and "Tweedekans" section
+      const nieuwprijsMatch = html.match(/Nieuwprijs[^€]*€\s*(\d+)[,.](\ d{2}|-)/i);
+      const tweedeKansMatch = html.match(/(?:Tweedekans|Tweede Kans)[^€]*€\s*(\d+)[,.](\ d{2}|-)/i);
       
       if (nieuwprijsMatch) {
-        originalPrice = parsePriceTocents(nieuwprijsMatch[1]);
-        tweedeKansPrice = parsePriceTocents(nieuwprijsMatch[2]);
+        originalPrice = parseInt(nieuwprijsMatch[1]);
       } else {
-        // Fallback: look for all prices
-        const allPrices = html.match(/€\s*([\d.,]+)/g);
-        if (allPrices && allPrices.length >= 2) {
-          // On Tweede Kans pages, usually first is original, second is Tweede Kans
-          originalPrice = parsePriceTocents(allPrices[0]);
-          tweedeKansPrice = parsePriceTocents(allPrices[1]);
-        } else if (allPrices && allPrices.length === 1) {
-          tweedeKansPrice = parsePriceTocents(allPrices[0]);
+        // Fallback: extract prices from text
+        const textLines = $.text().split('\n');
+        for (const line of textLines) {
+          const priceMatch = line.match(/€?\s*(\d{3,4})[,.](\ d{2}|-)/);
+          if (priceMatch) {
+            const price = parseInt(priceMatch[1]);
+            if (price > 300 && price < 3000 && !originalPrice) {
+              originalPrice = price;
+            }
+          }
+        }
+      }
+      
+      if (tweedeKansMatch) {
+        tweedeKansPrice = parseInt(tweedeKansMatch[1]);
+      } else {
+        // Fallback: extract prices from text
+        const textLines = $.text().split('\n');
+        const prices: number[] = [];
+        for (const line of textLines) {
+          const priceMatch = line.match(/€?\s*(\d{3,4})[,.](\ d{2}|-)/);
+          if (priceMatch) {
+            const price = parseInt(priceMatch[1]);
+            if (price > 300 && price < 3000) {
+              prices.push(price);
+            }
+          }
+        }
+        // Get the second unique price (first is original, second is Tweede Kans)
+        const uniquePrices = Array.from(new Set(prices)).sort((a, b) => a - b);
+        if (uniquePrices.length > 1) {
+          // Usually first is Tweede Kans (lower), second is original (higher)
+          tweedeKansPrice = uniquePrices[0];
+          originalPrice = uniquePrices[1];
+        } else if (uniquePrices.length === 1) {
+          tweedeKansPrice = uniquePrices[0];
         }
       }
     } else {
@@ -76,27 +109,35 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
         tweedeKansAvailable = true;
         
         // Extract Tweede Kans price from "Voordelige Tweedekans van €XXX,-" pattern
-        const tweedeKansPattern = /Voordelige\s+Tweedekans[^€]*van\s+€\s*([\d.,]+)/i;
+        const tweedeKansPattern = /Voordelige\s+Tweedekans[^€]*van\s+€?\s*(\d+)[,.](\d{2}|-)/i;
         const tweedeKansMatch = html.match(tweedeKansPattern);
         
         if (tweedeKansMatch) {
-          tweedeKansPrice = parsePriceTocents(tweedeKansMatch[1]);
+          tweedeKansPrice = parseInt(tweedeKansMatch[1]);
         }
-        
-        // Extract original price - look for "Adviesprijs" followed by prices
-        // Pattern: "Adviesprijs Samsung 899,- 699,-" (first is advice, second is current)
-        const adviesprijs = html.match(/Adviesprijs[^€]*€\s*([\d.,]+)[^€]*€\s*([\d.,]+)/i);
-        if (adviesprijs) {
-          // First price after "Adviesprijs" is the advice price (crossed out)
-          // Second price is the current selling price
-          originalPrice = parsePriceTocents(adviesprijs[2]);
-        } else {
-          // Fallback: look for the first price on the page
-          const firstPrice = html.match(/€\s*([\d.,]+)/);
-          if (firstPrice) {
-            originalPrice = parsePriceTocents(firstPrice[1]);
+      }
+      
+      // Extract current price - look for prices in text content (not SVG)
+      // Split by lines and look for price patterns
+      const textLines = $.text().split('\n');
+      const prices: number[] = [];
+      
+      for (const line of textLines) {
+        const priceMatch = line.match(/€?\s*(\d{3,4})[,.](\d{2}|-)/);
+        if (priceMatch) {
+          const price = parseInt(priceMatch[1]);
+          // Filter to reasonable product prices
+          if (price > 300 && price < 3000 && price !== 1999 && price !== 2026) {
+            prices.push(price);
           }
         }
+      }
+      
+      // Get unique prices
+      const uniquePrices = Array.from(new Set(prices));
+      if (uniquePrices.length > 0) {
+        currentPrice = uniquePrices[0];
+        originalPrice = uniquePrices[0];
       }
     }
     
@@ -104,6 +145,7 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
       name,
       image,
       originalPrice,
+      currentPrice,
       tweedeKansPrice,
       tweedeKansAvailable,
     };
@@ -113,13 +155,51 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
   }
 }
 
-function parsePriceTocents(priceStr: string): number {
-  // Convert "€ 123,45" or "€ 123.45" or "123,45" to cents (12345)
-  const cleaned = priceStr.replace(/[€\s]/g, "");
-  // Handle both comma and dot as decimal separator
-  const normalized = cleaned.replace(/,/, ".");
-  const price = parseFloat(normalized);
-  return Math.round(price * 100);
+function extractMainProductImage($: cheerio.CheerioAPI, html: string): string | undefined {
+  // Look for main product image - typically in a picture tag or specific img elements
+  let imageUrl: string | undefined;
+
+  // Try to find image in picture tag (most reliable)
+  const pictureImg = $("picture img").first().attr("src");
+  if (pictureImg && !pictureImg.includes("employee")) {
+    imageUrl = pictureImg;
+  }
+
+  // If not found, try to find image with data-src attribute (lazy loading)
+  if (!imageUrl) {
+    const lazyImg = $("img[data-src]").first().attr("data-src");
+    if (lazyImg && !lazyImg.includes("employee")) {
+      imageUrl = lazyImg;
+    }
+  }
+
+  // Try to find main product image by looking for images with product-related alt text
+  if (!imageUrl) {
+    $("img").each((_, el) => {
+      const src = $(el).attr("src") || $(el).attr("data-src") || "";
+      const alt = $(el).attr("alt") || "";
+
+      // Skip employee/service images
+      if (
+        src &&
+        !src.includes("employee") &&
+        !alt.includes("employee") &&
+        (alt.toLowerCase().includes("main") ||
+          alt.toLowerCase().includes("product") ||
+          alt.toLowerCase().includes("samsung"))
+      ) {
+        imageUrl = src;
+        return false; // break
+      }
+    });
+  }
+
+  // Make sure URL is absolute
+  if (imageUrl && !imageUrl.startsWith("http")) {
+    imageUrl = "https://www.coolblue.nl" + imageUrl;
+  }
+
+  return imageUrl;
 }
 
 export async function extractProductIdFromUrl(url: string): Promise<string | null> {
@@ -138,8 +218,10 @@ export async function testScraper(urls: string[]): Promise<void> {
       console.log("Result:", {
         name: data.name,
         tweedeKansAvailable: data.tweedeKansAvailable,
-        originalPrice: data.originalPrice ? `€${(data.originalPrice / 100).toFixed(2)}` : "N/A",
-        tweedeKansPrice: data.tweedeKansPrice ? `€${(data.tweedeKansPrice / 100).toFixed(2)}` : "N/A",
+        originalPrice: data.originalPrice ? `€${data.originalPrice}` : "N/A",
+        currentPrice: data.currentPrice ? `€${data.currentPrice}` : "N/A",
+        tweedeKansPrice: data.tweedeKansPrice ? `€${data.tweedeKansPrice}` : "N/A",
+        image: data.image ? "✓" : "✗",
       });
       console.log("---\n");
     } catch (error) {
