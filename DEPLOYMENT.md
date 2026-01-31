@@ -47,7 +47,31 @@ VITE_ANALYTICS_WEBSITE_ID=""
 
 ## 🚀 Hosting Opties
 
-### Optie 1: **Railway** (Aanbevolen - Makkelijkst)
+### Optie 0: **Proxmox** (Self-hosted - Beste voor homelab)
+
+Heb je een Proxmox server? Perfect! Self-hosting geeft volledige controle zonder maandelijkse kosten.
+
+**Zie de gedetailleerde [PROXMOX-DEPLOYMENT.md](./PROXMOX-DEPLOYMENT.md) guide voor:**
+- LXC container deployment (lightweight, aanbevolen)
+- Docker in LXC deployment
+- Complete setup met MySQL, PM2, Nginx
+- Backup strategieën met Proxmox
+- Security hardening
+- Network configuratie
+
+**Snel overzicht:**
+```bash
+# Maak Ubuntu LXC container (2GB RAM, 2 cores, 10GB disk)
+# Install Node.js, MySQL, PM2
+# Clone repo, configure .env, build app
+# Setup automatic backups
+```
+
+**Kosten:** €0/maand (alleen stroom) + volledige controle! 🎯
+
+---
+
+### Optie 1: **Railway** (Aanbevolen - Makkelijkst Cloud)
 
 Railway is ideaal voor full-stack apps met database.
 

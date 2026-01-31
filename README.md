@@ -125,7 +125,14 @@ De applicatie kan op meerdere manieren gehost worden:
 
 ### Quick Deploy Opties
 
-**1. Railway (Aanbevolen - Makkelijkst)**
+**0. Proxmox (Self-hosted - €0/maand) 🏠**
+```bash
+# Maak LXC container met Ubuntu 22.04
+# Volg de complete PROXMOX-DEPLOYMENT.md guide
+```
+Perfect voor homelab! Zie **[PROXMOX-DEPLOYMENT.md](./PROXMOX-DEPLOYMENT.md)**
+
+**1. Railway (Cloud - Makkelijkst) ☁️**
 ```bash
 npm install -g @railway/cli
 railway login
@@ -134,7 +141,7 @@ railway up
 ```
 Voeg MySQL database toe via Railway dashboard en configureer environment variabelen.
 
-**2. Docker**
+**2. Docker 🐳**
 ```bash
 docker-compose up -d
 ```
