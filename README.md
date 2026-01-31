@@ -104,11 +104,58 @@ pnpm test
 
 ### Environment Variables
 
-De volgende environment variables worden automatisch ingesteld:
+Kopieer `.env.example` naar `.env` en configureer:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Belangrijkste variabelen:
 - `DATABASE_URL` - Database connection string
-- `JWT_SECRET` - Session signing secret
-- `VITE_APP_ID` - Manus OAuth app ID
-- `OAUTH_SERVER_URL` - OAuth server URL
+- `JWT_SECRET` - Session signing secret (genereer met: `openssl rand -base64 32`)
+- `GMAIL_USER` - Gmail email adres voor notificaties
+- `GMAIL_APP_PASSWORD` - Gmail app-specific password
+- `NODE_ENV` - Environment (development/production)
+- `PORT` - Server port (default: 3000)
+
+## 🚀 Deployment
+
+De applicatie kan op meerdere manieren gehost worden:
+
+### Quick Deploy Opties
+
+**1. Railway (Aanbevolen - Makkelijkst)**
+```bash
+npm install -g @railway/cli
+railway login
+railway init
+railway up
+```
+Voeg MySQL database toe via Railway dashboard en configureer environment variabelen.
+
+**2. Docker**
+```bash
+docker-compose up -d
+```
+Start applicatie met MySQL database in containers.
+
+**3. VPS (Full Control)**
+```bash
+# Build en start op Ubuntu/Debian server
+pnpm install
+pnpm run build
+pm2 start npm --name coolblue-monitor -- start
+```
+
+### Gedetailleerde Deployment Guide
+
+Zie **[DEPLOYMENT.md](./DEPLOYMENT.md)** voor complete instructies voor:
+- Railway, Render, DigitalOcean App Platform
+- VPS setup (Nginx, SSL, PM2)
+- Docker deployment
+- Database configuratie
+- Monitoring en maintenance
 
 ## Toekomstige Verbeteringen
 

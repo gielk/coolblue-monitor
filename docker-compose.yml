@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: coolblue-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-coolblue_monitor}
+      MYSQL_USER: ${MYSQL_USER:-coolblue}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-coolblue_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - coolblue-network
+
+  # Coolblue Monitor App
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: coolblue-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      DATABASE_URL: mysql://${MYSQL_USER:-coolblue}:${MYSQL_PASSWORD:-coolblue_password}@db:3306/${MYSQL_DATABASE:-coolblue_monitor}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+    ports:
+      - "${PORT:-3000}:3000"
+    networks:
+      - coolblue-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  coolblue-network:
+    driver: bridge
