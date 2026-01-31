@@ -302,11 +302,11 @@ export default function Dashboard() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-4 border-t border-slate-200">
+                    <div className="grid grid-cols-2 gap-2 pt-4 border-t border-slate-200">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 gap-2"
+                        className="gap-1 text-xs"
                         onClick={() => setSelectedProductForChart(product.id)}
                       >
                         📊 Grafiek
@@ -314,11 +314,11 @@ export default function Dashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 gap-2"
+                        className="gap-1 text-xs"
                         onClick={() => refreshMutation.mutate({ productId: product.id })}
                         disabled={refreshMutation.isPending}
                       >
-                        <RefreshCw className="w-4 h-4" />
+                        <RefreshCw className="w-3 h-3" />
                         Vernieuwen
                       </Button>
                       <Dialog>
@@ -326,10 +326,10 @@ export default function Dashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="flex-1 gap-2"
+                            className="gap-1 text-xs"
                             onClick={() => handleEditProduct(product)}
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-3 h-3" />
                             Bewerk
                           </Button>
                         </DialogTrigger>
@@ -390,11 +390,11 @@ export default function Dashboard() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        className="flex-1 gap-2"
+                        className="gap-1 text-xs"
                         onClick={() => deleteMutation.mutate({ productId: product.id })}
                         disabled={deleteMutation.isPending}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
                         Verwijder
                       </Button>
                     </div>
