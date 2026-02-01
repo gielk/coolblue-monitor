@@ -296,7 +296,7 @@ async function extractAllPricesFromPage(page: Page): Promise<number[]> {
         const text = await element.textContent();
         if (text) {
           const price = parsePriceFromText(text);
-          if (price && price > 10000 && price < 1000000) { // €100 - €10,000
+          if (price && price >= 100 && price <= 10000000) { // €1 - €100,000
             prices.push(price);
           }
         }
@@ -353,8 +353,8 @@ function extractPricesFromText(text: string): number[] {
         priceInCents = euros * 100;
       }
 
-      // Filter redelijke prijzen
-      if (priceInCents >= 10000 && priceInCents <= 1000000) {
+      // Filter redelijke prijzen (€1 tot €100,000)
+      if (priceInCents >= 100 && priceInCents <= 10000000) {
         prices.push(priceInCents);
       }
     }
