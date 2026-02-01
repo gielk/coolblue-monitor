@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,8 +14,25 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 
 export default function Settings() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth({
+    redirectOnUnauthenticated: true,
+    redirectPath: getLoginUrl(),
+  });
   const [, navigate] = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="animate-spin">
+          <AlertCircle className="w-8 h-8 text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
   const [emailMethod, setEmailMethod] = useState<"smtp" | "resend" | "sendgrid">("smtp");
   const [testEmail, setTestEmail] = useState("");
 

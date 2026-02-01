@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -8,15 +9,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Trash2, Edit2, RefreshCw, Plus, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { AlertCircle, Trash2, Edit2, RefreshCw, Plus, CheckCircle2, Clock, AlertTriangle, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { PriceChart } from "@/components/PriceChart";
 import { NotificationCenter } from "@/components/NotificationCenter";
 
 export default function Dashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth({
+    redirectOnUnauthenticated: true,
+    redirectPath: getLoginUrl(),
+  });
   const [, navigate] = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="animate-spin">
+          <Clock className="w-8 h-8 text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [selectedProductForChart, setSelectedProductForChart] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState({
