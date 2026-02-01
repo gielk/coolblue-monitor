@@ -64,28 +64,29 @@ MYSQL_USER_PASSWORD=$(openssl rand -base64 16)
 print_success "MySQL wachtwoorden gegenereerd"
 
 #############################################
-# Stap 1: Update systeem
+# Stap 1: Update systeem en installeer basis tools
 #############################################
 
-print_step "Stap 1/10: Update systeem..."
+print_step "Stap 1/12: Update systeem en installeer basis tools..."
 apt update -qq
-apt upgrade -y -qq
-print_success "Systeem geüpdatet"
+apt install -y curl wget git ca-certificates gnupg > /dev/null 2>&1
+apt upgrade -y -qq 2>&1 | grep -v "kept back" || true
+print_success "Systeem geüpdatet en basis tools geïnstalleerd"
 
 #############################################
 # Stap 2: Installeer Node.js 20
 #############################################
 
-print_step "Stap 2/10: Installeer Node.js 20..."
+print_step "Stap 2/12: Installeer Node.js 20..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-apt install -y nodejs git > /dev/null 2>&1
+apt install -y nodejs > /dev/null 2>&1
 print_success "Node.js $(node --version) geïnstalleerd"
 
 #############################################
 # Stap 3: Installeer pnpm
 #############################################
 
-print_step "Stap 3/10: Installeer pnpm..."
+print_step "Stap 3/12: Installeer pnpm..."
 npm install -g pnpm > /dev/null 2>&1
 print_success "pnpm $(pnpm --version) geïnstalleerd"
 
@@ -93,7 +94,7 @@ print_success "pnpm $(pnpm --version) geïnstalleerd"
 # Stap 4: Installeer MySQL
 #############################################
 
-print_step "Stap 4/10: Installeer MySQL..."
+print_step "Stap 4/12: Installeer MySQL..."
 export DEBIAN_FRONTEND=noninteractive
 debconf-set-selections <<< "mysql-server mysql-server/root_password password $MYSQL_ROOT_PASSWORD"
 debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $MYSQL_ROOT_PASSWORD"
@@ -106,7 +107,7 @@ print_success "MySQL geïnstalleerd en gestart"
 # Stap 5: Configureer MySQL database
 #############################################
 
-print_step "Stap 5/10: Configureer database..."
+print_step "Stap 5/12: Configureer database..."
 
 # Maak database en user
 mysql -u root -p"$MYSQL_ROOT_PASSWORD" <<EOF
@@ -122,7 +123,7 @@ print_success "Database 'coolblue_monitor' aangemaakt"
 # Stap 6: Clone repository
 #############################################
 
-print_step "Stap 6/10: Clone repository..."
+print_step "Stap 6/12: Clone repository..."
 mkdir -p /opt/coolblue-monitor
 cd /opt/coolblue-monitor
 
@@ -140,7 +141,7 @@ print_success "Repository gecloned naar /opt/coolblue-monitor"
 # Stap 7: Installeer dependencies
 #############################################
 
-print_step "Stap 7/10: Installeer dependencies (dit kan even duren)..."
+print_step "Stap 7/12: Installeer dependencies (dit kan even duren)..."
 pnpm install --frozen-lockfile > /dev/null 2>&1
 print_success "Dependencies geïnstalleerd"
 
@@ -148,7 +149,7 @@ print_success "Dependencies geïnstalleerd"
 # Stap 8: Configureer environment variabelen
 #############################################
 
-print_step "Stap 8/10: Configureer environment..."
+print_step "Stap 8/12: Configureer environment..."
 
 cat > .env <<EOF
 # Database
