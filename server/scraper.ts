@@ -82,7 +82,7 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
       });
 
       // Combine with text-based extraction
-      const allPrices = [...new Set([...pricesFromElements, ...extractedPrices])].sort((a, b) => a - b);
+      const allPrices = Array.from(new Set([...pricesFromElements, ...extractedPrices])).sort((a, b) => a - b);
 
       if (allPrices.length >= 2) {
         // First price is usually Tweede Kans (lower), second is original (higher)
