@@ -10,6 +10,15 @@ export interface ProductData {
   tweedeKansAvailable: boolean;
 }
 
+// Try to import Playwright scraper (may not be available in all environments)
+let playwrightScraper: any = null;
+try {
+  playwrightScraper = require('./scraper-playwright');
+  console.log('[Scraper] Playwright scraper available ✓');
+} catch (e) {
+  console.log('[Scraper] Playwright not available, using fallback axios scraper');
+}
+
 const COOLBLUE_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -28,7 +37,36 @@ const COOLBLUE_HEADERS = {
   "Referer": "https://www.google.com/",
 };
 
+/**
+ * Main scraper function - tries Playwright first, falls back to Axios
+ */
 export async function scrapeProductData(productUrl: string): Promise<ProductData> {
+  // Try Playwright first (most reliable)
+  if (playwrightScraper) {
+    try {
+      console.log('[Scraper] Using Playwright scraper (primary)');
+      const data = await playwrightScraper.scrapeProductData(productUrl);
+
+      // Validate we got useful data
+      if (data.name && data.name !== 'Unknown Product') {
+        return data;
+      }
+
+      console.log('[Scraper] Playwright returned incomplete data, trying fallback...');
+    } catch (error) {
+      console.error('[Scraper] Playwright failed:', error instanceof Error ? error.message : String(error));
+      console.log('[Scraper] Falling back to Axios scraper...');
+    }
+  }
+
+  // Fallback to Axios scraper
+  return scrapeProductDataWithAxios(productUrl);
+}
+
+/**
+ * Axios fallback scraper (lightweight but may get blocked)
+ */
+async function scrapeProductDataWithAxios(productUrl: string): Promise<ProductData> {
   try {
     const response = await axios.get(productUrl, {
       headers: COOLBLUE_HEADERS,
