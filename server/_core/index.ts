@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import os from "os";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -9,6 +10,20 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startMonitoringScheduler } from "../jobs";
 import { setEmailConfig } from "../email";
+
+function getLocalIpAddress(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    const iface = interfaces[name];
+    if (!iface) continue;
+    for (const alias of iface) {
+      if (alias.family === 'IPv4' && !alias.internal) {
+        return alias.address;
+      }
+    }
+  }
+  return 'localhost';
+}
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -70,8 +85,11 @@ async function startServer() {
   }
 
   server.listen(port, () => {
+    const localIp = getLocalIpAddress();
     console.log(`Server running on http://localhost:${port}/`);
-    
+    console.log(`[Server] Local network: http://${localIp}:${port}/`);
+    console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+
     // Start monitoring scheduler
     if (process.env.GMAIL_EMAIL && process.env.GMAIL_APP_PASSWORD) {
       console.log("[Server] Configuring Gmail for email notifications");

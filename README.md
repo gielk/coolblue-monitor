@@ -114,7 +114,7 @@ nano .env
 Belangrijkste variabelen:
 - `DATABASE_URL` - Database connection string
 - `JWT_SECRET` - Session signing secret (genereer met: `openssl rand -base64 32`)
-- `GMAIL_USER` - Gmail email adres voor notificaties
+- `GMAIL_EMAIL` - Gmail email adres voor notificaties
 - `GMAIL_APP_PASSWORD` - Gmail app-specific password
 - `NODE_ENV` - Environment (development/production)
 - `PORT` - Server port (default: 3000)
@@ -163,6 +163,54 @@ Zie **[DEPLOYMENT.md](./DEPLOYMENT.md)** voor complete instructies voor:
 - Docker deployment
 - Database configuratie
 - Monitoring en maintenance
+
+## 🔄 Updating
+
+### Proxmox / VPS Update (One-Command)
+
+```bash
+# SSH naar je server
+ssh root@your-server
+
+# Ga de container binnen (Proxmox LXC)
+pct enter 105  # Of jouw container ID
+
+# Run update script
+./scripts/update.sh
+```
+
+Dit script doet automatisch:
+- ✅ Pull nieuwste code
+- ✅ Install dependencies
+- ✅ Install/update Playwright browsers
+- ✅ Build applicatie
+- ✅ Restart PM2
+
+### Handmatige Update
+
+```bash
+cd /opt/coolblue-monitor
+git stash
+git pull origin main
+pnpm install
+pnpm exec playwright install chromium
+pnpm run build
+pm2 restart coolblue-monitor
+```
+
+### Check Logs na Update
+
+```bash
+pm2 logs coolblue-monitor --lines 20
+```
+
+Je zou het IP adres en omgeving moeten zien:
+```
+Server running on http://localhost:3000/
+[Server] Local network: http://192.168.178.27:3000/
+[Server] Environment: production
+[Server] Configuring Gmail for email notifications
+```
 
 ## Toekomstige Verbeteringen
 
