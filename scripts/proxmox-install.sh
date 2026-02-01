@@ -174,26 +174,51 @@ chmod 600 .env
 print_success "Environment variabelen geconfigureerd"
 
 #############################################
-# Stap 9: Build applicatie
+# Stap 9: Installeer Playwright
 #############################################
 
-print_step "Stap 9/10: Build applicatie..."
+print_step "Stap 9/12: Installeer Playwright voor robuuste scraping..."
+
+# Installeer Playwright package
+pnpm add -D playwright@1.48.0 > /dev/null 2>&1
+
+# Installeer browser dependencies
+apt-get install -y \
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+    libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+    libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 \
+    > /dev/null 2>&1
+
+# Installeer Chromium browser (silent install)
+export PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+npx playwright install chromium > /dev/null 2>&1 || {
+    print_warning "Playwright browser installatie mislukt (dit is optioneel)"
+}
+
+print_success "Playwright geïnstalleerd (scraper gebruikt nu headless browser)"
+
+#############################################
+# Stap 10: Build applicatie
+#############################################
+
+print_step "Stap 10/12: Build applicatie..."
 pnpm run build > /dev/null 2>&1
 print_success "Applicatie gebuild"
 
 #############################################
-# Stap 10: Setup database
+# Stap 11: Setup database
 #############################################
 
-print_step "Stap 10/10: Run database migraties..."
+print_step "Stap 11/12: Run database migraties..."
 pnpm run db:push > /dev/null 2>&1
 print_success "Database schema geïnitialiseerd"
 
 #############################################
-# Installeer PM2
+# Stap 12: Installeer PM2
 #############################################
 
-print_step "Installeer PM2 process manager..."
+print_step "Stap 12/12: Installeer PM2 process manager..."
 npm install -g pm2 > /dev/null 2>&1
 
 # Start applicatie met PM2
