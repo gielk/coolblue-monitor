@@ -16,8 +16,10 @@ import { PriceChart } from "@/components/PriceChart";
 import { NotificationCenter } from "@/components/NotificationCenter";
 
 export default function Dashboard() {
+  const skipAuth = import.meta.env.VITE_SKIP_AUTH === "true" || import.meta.env.MODE === "production";
+
   const { user, isAuthenticated, loading } = useAuth({
-    redirectOnUnauthenticated: true,
+    redirectOnUnauthenticated: !skipAuth,
     redirectPath: getLoginUrl(),
   });
   const [, navigate] = useLocation();
@@ -32,7 +34,9 @@ export default function Dashboard() {
     );
   }
 
-  if (!isAuthenticated || !user) {
+  // For local installations without OAuth, continue even if not authenticated
+  // The backend will provide a default user
+  if (!skipAuth && (!isAuthenticated || !user)) {
     return null;
   }
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
@@ -45,12 +49,12 @@ export default function Dashboard() {
 
   const utils = trpc.useUtils();
   const { data: products, isLoading } = trpc.products.list.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: skipAuth || isAuthenticated,
   });
 
   const { data: priceHistoryData, isLoading: priceHistoryLoading } = trpc.priceHistory.get.useQuery(
     { productId: selectedProductForChart || 0 },
-    { enabled: isAuthenticated && selectedProductForChart !== null }
+    { enabled: (skipAuth || isAuthenticated) && selectedProductForChart !== null }
   );
 
   const addMutation = trpc.products.add.useMutation({
@@ -95,7 +99,7 @@ export default function Dashboard() {
     },
   });
 
-  if (!isAuthenticated) {
+  if (!skipAuth && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <Card className="w-full max-w-md">

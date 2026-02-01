@@ -61,6 +61,10 @@ export function useAuth(options?: UseAuthOptions) {
   ]);
 
   useEffect(() => {
+    // Skip redirect for local installations without OAuth
+    const skipAuth = import.meta.env.VITE_SKIP_AUTH === "true" || import.meta.env.MODE === "production";
+    if (skipAuth) return;
+
     if (!redirectOnUnauthenticated) return;
     if (meQuery.isLoading || logoutMutation.isPending) return;
     if (state.user) return;

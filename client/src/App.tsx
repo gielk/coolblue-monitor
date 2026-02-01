@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -9,10 +9,14 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
+  // For local installations, redirect directly to dashboard
+  const skipAuth = import.meta.env.VITE_SKIP_AUTH === "true" || import.meta.env.MODE === "production";
+
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path={"/"}>
+        {skipAuth ? <Redirect to="/dashboard" /> : <Home />}
+      </Route>
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/settings"} component={Settings} />
       <Route path={"/404"} component={NotFound} />
