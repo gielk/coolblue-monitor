@@ -277,26 +277,30 @@ async function extractRegularProductPrices(page: Page): Promise<{
 async function extractAllPricesFromPage(page: Page): Promise<number[]> {
   const prices: number[] = [];
 
-  // Strategie 1: Zoek naar specifieke price selectors
+  // Strategie 1: Zoek naar specifieke price selectors (ONLY visible price elements)
   const priceSelectors = [
     '[data-test="price"]',
     '[data-testid="price"]',
+    '.sales-price__current',
     '.sales-price',
-    '.price',
-    '[class*="price"]',
-    '[class*="Price"]',
+    '[class*="SalesPrice"]',
+    'div.product-order strong',
     'strong:has-text("€")',
-    'span:has-text("€")',
   ];
 
   for (const selector of priceSelectors) {
     try {
       const elements = await page.$$(selector);
       for (const element of elements) {
+        // Check if element is visible
+        const isVisible = await element.isVisible();
+        if (!isVisible) continue;
+
         const text = await element.textContent();
         if (text) {
           const price = parsePriceFromText(text);
-          if (price && price >= 100 && price <= 10000000) { // €1 - €100,000
+          // Stricter validation: realistic product prices between €50 and €50,000
+          if (price && price >= 5000 && price <= 5000000) {
             prices.push(price);
           }
         }
@@ -306,11 +310,23 @@ async function extractAllPricesFromPage(page: Page): Promise<number[]> {
     }
   }
 
-  // Strategie 2: Zoek in alle text nodes naar prijs patterns
-  if (prices.length === 0) {
-    const bodyText = await page.textContent('body') || '';
-    const textPrices = extractPricesFromText(bodyText);
-    prices.push(...textPrices);
+  // If we found prices in specific selectors, return those (most reliable)
+  if (prices.length > 0) {
+    console.log('[Scraper] Found prices from selectors:', prices.map(p => `€${(p/100).toFixed(2)}`));
+    return Array.from(new Set(prices)).sort((a, b) => b - a);
+  }
+
+  // Fallback: Only search in main product area, not entire body
+  try {
+    const productArea = await page.$('main, [role="main"], .product-detail, .product-header');
+    if (productArea) {
+      const areaText = await productArea.textContent() || '';
+      const textPrices = extractPricesFromText(areaText);
+      prices.push(...textPrices);
+      console.log('[Scraper] Found prices from text:', prices.map(p => `€${(p/100).toFixed(2)}`));
+    }
+  } catch (e) {
+    console.log('[Scraper] Could not extract from product area:', e);
   }
 
   // Return unieke prijzen
@@ -320,17 +336,13 @@ async function extractAllPricesFromPage(page: Page): Promise<number[]> {
 function extractPricesFromText(text: string): number[] {
   const prices: number[] = [];
 
-  // Nederlandse prijs formats:
-  // €1.234,-
-  // €1234,-
-  // € 1.234,99
-  // 1.234,99
+  // ONLY match prices with € symbol (more reliable)
+  // Nederlandse prijs formats met € symbool
   const patterns = [
     /€\s?(\d{1,2})\.(\d{3}),-/g,           // €1.234,-
     /€\s?(\d{1,2})\.(\d{3}),(\d{2})/g,     // €1.234,99
-    /€\s?(\d{3,4}),-/g,                    // €1234,-
-    /(\d{1,2})\.(\d{3}),-/g,               // 1.234,-
-    /(\d{1,2})\.(\d{3}),(\d{2})/g,         // 1.234,99
+    /€\s?(\d{3,4}),-/g,                    // €1234,- or €650,-
+    /€\s?(\d{3,4}),(\d{2})/g,              // €650,00 or €1234,99
   ];
 
   for (const pattern of patterns) {
@@ -339,22 +351,30 @@ function extractPricesFromText(text: string): number[] {
       let priceInCents: number;
 
       if (match[3]) {
-        // Format: 1.234,99
+        // Format: €1.234,99 (with thousands separator)
         const euros = parseInt(match[1] + match[2]);
         const cents = parseInt(match[3]);
         priceInCents = euros * 100 + cents;
       } else if (match[2]) {
-        // Format: 1.234,-
-        const euros = parseInt(match[1] + match[2]);
-        priceInCents = euros * 100;
+        // Could be: €1.234,- OR €650,00
+        const firstNum = parseInt(match[1]);
+        const secondNum = parseInt(match[2]);
+
+        if (secondNum === 0 || secondNum < 100) {
+          // This is cents: €650,00
+          priceInCents = firstNum * 100 + secondNum;
+        } else {
+          // This is thousands: €1.234,-
+          priceInCents = (firstNum * 1000 + secondNum) * 100;
+        }
       } else {
-        // Format: 1234,-
+        // Format: €1234,-
         const euros = parseInt(match[1]);
         priceInCents = euros * 100;
       }
 
-      // Filter redelijke prijzen (€1 tot €100,000)
-      if (priceInCents >= 100 && priceInCents <= 10000000) {
+      // Filter realistic product prices (€50 tot €50,000)
+      if (priceInCents >= 5000 && priceInCents <= 5000000) {
         prices.push(priceInCents);
       }
     }
@@ -367,28 +387,45 @@ function parsePriceFromText(text: string): number | null {
   // Remove alle whitespace en newlines
   const cleaned = text.replace(/\s+/g, ' ').trim();
 
-  // Probeer prijs te extracten
+  // ONLY match prices with € symbol
   const patterns = [
-    /€\s?(\d{1,2})\.(\d{3}),-/,
-    /€\s?(\d{1,2})\.(\d{3}),(\d{2})/,
-    /€\s?(\d{3,4}),-/,
-    /(\d{1,2})\.(\d{3}),-/,
-    /(\d{1,2})\.(\d{3}),(\d{2})/,
+    /€\s?(\d{1,2})\.(\d{3}),-/,              // €1.234,-
+    /€\s?(\d{1,2})\.(\d{3}),(\d{2})/,        // €1.234,99
+    /€\s?(\d{3,4}),-/,                       // €650,-
+    /€\s?(\d{3,4}),(\d{2})/,                 // €650,00
   ];
 
   for (const pattern of patterns) {
     const match = cleaned.match(pattern);
     if (match) {
+      let priceInCents: number;
+
       if (match[3]) {
+        // Format: €1.234,99 (with thousands)
         const euros = parseInt(match[1] + match[2]);
         const cents = parseInt(match[3]);
-        return euros * 100 + cents;
+        priceInCents = euros * 100 + cents;
       } else if (match[2]) {
-        const euros = parseInt(match[1] + match[2]);
-        return euros * 100;
+        // Could be: €1.234,- OR €650,00
+        const firstNum = parseInt(match[1]);
+        const secondNum = parseInt(match[2]);
+
+        if (secondNum === 0 || secondNum < 100) {
+          // This is cents: €650,00
+          priceInCents = firstNum * 100 + secondNum;
+        } else {
+          // This is thousands: €1.234,-
+          priceInCents = (firstNum * 1000 + secondNum) * 100;
+        }
       } else {
+        // Format: €650,-
         const euros = parseInt(match[1]);
-        return euros * 100;
+        priceInCents = euros * 100;
+      }
+
+      // Validate realistic price range
+      if (priceInCents >= 5000 && priceInCents <= 5000000) {
+        return priceInCents;
       }
     }
   }
