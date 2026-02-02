@@ -22,19 +22,7 @@ export default function Settings() {
   });
   const [, navigate] = useLocation();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="animate-spin">
-          <AlertCircle className="w-8 h-8 text-blue-600" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!skipAuth && (!isAuthenticated || !user)) {
-    return null;
-  }
+  // All hooks must be called before any conditional returns
   const [emailMethod, setEmailMethod] = useState<"smtp" | "resend" | "sendgrid">("smtp");
   const [testEmail, setTestEmail] = useState("");
 
@@ -75,6 +63,20 @@ export default function Settings() {
       toast.error(`Fout: ${error.message}`);
     },
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="animate-spin">
+          <AlertCircle className="w-8 h-8 text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!skipAuth && (!isAuthenticated || !user)) {
+    return null;
+  }
 
   if (!skipAuth && !isAuthenticated) {
     return (

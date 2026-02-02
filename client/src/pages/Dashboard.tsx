@@ -24,21 +24,7 @@ export default function Dashboard() {
   });
   const [, navigate] = useLocation();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="animate-spin">
-          <Clock className="w-8 h-8 text-blue-600" />
-        </div>
-      </div>
-    );
-  }
-
-  // For local installations without OAuth, continue even if not authenticated
-  // The backend will provide a default user
-  if (!skipAuth && (!isAuthenticated || !user)) {
-    return null;
-  }
+  // All hooks must be called before any conditional returns
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [selectedProductForChart, setSelectedProductForChart] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -98,6 +84,22 @@ export default function Dashboard() {
       toast.error(`Fout bij vernieuwen: ${error.message}`);
     },
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="animate-spin">
+          <Clock className="w-8 h-8 text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  // For local installations without OAuth, continue even if not authenticated
+  // The backend will provide a default user
+  if (!skipAuth && (!isAuthenticated || !user)) {
+    return null;
+  }
 
   if (!skipAuth && !isAuthenticated) {
     return (
