@@ -103,3 +103,12 @@
 - [x] Verbeter dashboard product card UI layout
 - [x] Test scraper met Samsung DV90DB7845GBU3 product
 - [x] Alle 12 tests slagen
+
+
+## Phase 6: Playwright Scraper Integration
+- [x] Integreer Playwright scraper van GitHub
+- [x] Repareer TypeScript import errors
+- [x] Installeer Playwright browsers
+- [x] Alle 12 tests slagen
+- [ ] Test Playwright scraper met Samsung producten
+- [ ] Valideer prijs-extractie (normale prijs, Tweede Kans prijs)

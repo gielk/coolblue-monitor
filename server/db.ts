@@ -18,6 +18,22 @@ export async function getDb() {
   return _db;
 }
 
+// For backward compatibility - returns a proxy that throws helpful error
+export const db = {
+  select: () => {
+    throw new Error('Use getDb() instead of db - db is not available synchronously');
+  },
+  insert: () => {
+    throw new Error('Use getDb() instead of db - db is not available synchronously');
+  },
+  update: () => {
+    throw new Error('Use getDb() instead of db - db is not available synchronously');
+  },
+  delete: () => {
+    throw new Error('Use getDb() instead of db - db is not available synchronously');
+  },
+} as any;
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
