@@ -88,17 +88,71 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
     // Check of dit een Tweede Kans pagina is
     const isTweedeKansPage = productUrl.includes('/product-tweedekans/');
 
-    // Extract prijzen
-    const prices = await extractPrices(page, isTweedeKansPage);
+    // Extract product ID
+    const productId = await extractProductIdFromUrl(productUrl);
 
-    console.log('[Scraper] Extracted data:', { name, ...prices, image: !!image });
+    let finalPrices;
+
+    if (isTweedeKansPage) {
+      // Al op Tweede Kans pagina
+      finalPrices = await extractPrices(page, true);
+    } else {
+      // Regular product page
+      console.log('[Scraper] Extracting regular product prices...');
+      const regularPrices = await extractPrices(page, false);
+
+      // Nu ALTIJD de Tweede Kans URL proberen
+      if (productId) {
+        const tweedeKansUrl = `https://www.coolblue.nl/product-tweedekans/${productId}/`;
+        console.log(`[Scraper] Checking Tweede Kans URL: ${tweedeKansUrl}`);
+
+        try {
+          // Navigate naar Tweede Kans pagina
+          await page.goto(tweedeKansUrl, {
+            waitUntil: 'domcontentloaded',
+            timeout: 15000,
+          });
+
+          await page.waitForTimeout(1500);
+
+          // Check of pagina bestaat (niet 404)
+          const pageTitle = await page.title();
+          const is404 = pageTitle.includes('404') || pageTitle.includes('Pagina niet gevonden');
+
+          if (!is404) {
+            console.log('[Scraper] ✓ Tweede Kans page exists! Extracting TK price...');
+            const tkPrices = await extractPrices(page, true);
+
+            // Combineer: originele prijs van regular page, TK prijs van TK page
+            finalPrices = {
+              originalPrice: regularPrices.originalPrice,
+              tweedeKansPrice: tkPrices.tweedeKansPrice || tkPrices.originalPrice,
+              tweedeKansAvailable: true,
+            };
+
+            console.log('[Scraper] TK price found:', tkPrices.tweedeKansPrice ? `€${(tkPrices.tweedeKansPrice / 100).toFixed(2)}` : 'N/A');
+          } else {
+            console.log('[Scraper] Tweede Kans page is 404');
+            finalPrices = regularPrices;
+          }
+        } catch (tkError) {
+          console.log('[Scraper] Tweede Kans page not accessible:', tkError instanceof Error ? tkError.message : 'Unknown error');
+          finalPrices = regularPrices;
+        }
+      } else {
+        console.log('[Scraper] Could not extract product ID');
+        finalPrices = regularPrices;
+      }
+    }
+
+    console.log('[Scraper] Final extracted data:', { name, ...finalPrices, image: !!image });
 
     await context.close();
 
     return {
       name,
       image,
-      ...prices,
+      ...finalPrices,
     };
   } catch (error) {
     await context.close();
