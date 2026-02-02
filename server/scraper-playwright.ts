@@ -4,7 +4,6 @@ export interface ProductData {
   name: string;
   image?: string;
   originalPrice?: number;
-  currentPrice?: number;
   tweedeKansPrice?: number;
   tweedeKansAvailable: boolean;
 }
@@ -164,7 +163,6 @@ async function extractProductImage(page: Page): Promise<string | undefined> {
 
 async function extractPrices(page: Page, isTweedeKansPage: boolean): Promise<{
   originalPrice?: number;
-  currentPrice?: number;
   tweedeKansPrice?: number;
   tweedeKansAvailable: boolean;
 }> {
@@ -177,7 +175,6 @@ async function extractPrices(page: Page, isTweedeKansPage: boolean): Promise<{
 
 async function extractTweedeKansPrices(page: Page): Promise<{
   originalPrice?: number;
-  currentPrice?: number;
   tweedeKansPrice?: number;
   tweedeKansAvailable: boolean;
 }> {
@@ -186,7 +183,7 @@ async function extractTweedeKansPrices(page: Page): Promise<{
   // Probeer prijzen te vinden met verschillende strategieën
   const prices = await extractAllPricesFromPage(page);
 
-  console.log('[Scraper] Found prices:', prices);
+  console.log('[Scraper] Found prices:', prices.map(p => `€${(p/100).toFixed(2)}`));
 
   // Op Tweede Kans pagina verwachten we 2 prijzen:
   // - Nieuwprijs (hoger)
@@ -199,7 +196,6 @@ async function extractTweedeKansPrices(page: Page): Promise<{
     return {
       tweedeKansPrice: sortedPrices[0], // Laagste = Tweede Kans
       originalPrice: sortedPrices[sortedPrices.length - 1], // Hoogste = Nieuwprijs
-      currentPrice: sortedPrices[0],
       tweedeKansAvailable: true,
     };
   } else if (prices.length === 1) {
@@ -207,7 +203,6 @@ async function extractTweedeKansPrices(page: Page): Promise<{
     return {
       tweedeKansPrice: prices[0],
       originalPrice: prices[0],
-      currentPrice: prices[0],
       tweedeKansAvailable: true,
     };
   }
@@ -221,7 +216,6 @@ async function extractTweedeKansPrices(page: Page): Promise<{
       return {
         tweedeKansPrice: sorted[0],
         originalPrice: sorted[sorted.length - 1],
-        currentPrice: sorted[0],
         tweedeKansAvailable: true,
       };
     }
@@ -234,7 +228,6 @@ async function extractTweedeKansPrices(page: Page): Promise<{
 
 async function extractRegularProductPrices(page: Page): Promise<{
   originalPrice?: number;
-  currentPrice?: number;
   tweedeKansPrice?: number;
   tweedeKansAvailable: boolean;
 }> {
@@ -255,7 +248,6 @@ async function extractRegularProductPrices(page: Page): Promise<{
       // Als Tweede Kans beschikbaar is en we hebben 2 prijzen
       const sorted = [...prices].sort((a, b) => a - b);
       return {
-        currentPrice: mainPrice,
         originalPrice: mainPrice,
         tweedeKansPrice: sorted[0], // Laagste = Tweede Kans
         tweedeKansAvailable: true,
@@ -263,7 +255,6 @@ async function extractRegularProductPrices(page: Page): Promise<{
     }
 
     return {
-      currentPrice: mainPrice,
       originalPrice: mainPrice,
       tweedeKansAvailable: hasTweedeKans,
     };
@@ -459,7 +450,6 @@ export async function testScraper(urls: string[]): Promise<void> {
         name: data.name,
         tweedeKansAvailable: data.tweedeKansAvailable,
         originalPrice: data.originalPrice ? `€${(data.originalPrice / 100).toFixed(2)}` : "N/A",
-        currentPrice: data.currentPrice ? `€${(data.currentPrice / 100).toFixed(2)}` : "N/A",
         tweedeKansPrice: data.tweedeKansPrice ? `€${(data.tweedeKansPrice / 100).toFixed(2)}` : "N/A",
         image: data.image ? "✓" : "✗",
       });

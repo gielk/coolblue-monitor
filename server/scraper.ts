@@ -5,7 +5,6 @@ export interface ProductData {
   name: string;
   image?: string;
   originalPrice?: number;
-  currentPrice?: number;
   tweedeKansPrice?: number;
   tweedeKansAvailable: boolean;
 }
@@ -21,20 +20,13 @@ try {
 
 const COOLBLUE_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
   "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
   "Accept-Encoding": "gzip, deflate, br",
-  "Cache-Control": "no-cache",
-  "Pragma": "no-cache",
-  "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-  "Sec-Ch-Ua-Mobile": "?0",
-  "Sec-Ch-Ua-Platform": '"Windows"',
   "Sec-Fetch-Dest": "document",
   "Sec-Fetch-Mode": "navigate",
   "Sec-Fetch-Site": "none",
   "Sec-Fetch-User": "?1",
-  "Upgrade-Insecure-Requests": "1",
-  "Referer": "https://www.google.com/",
 };
 
 /**
@@ -64,10 +56,94 @@ export async function scrapeProductData(productUrl: string): Promise<ProductData
 }
 
 /**
- * Axios fallback scraper (lightweight but may get blocked)
+ * Parse Dutch price format correctly
+ * Examples: €650,- → 65000, €1.234,99 → 123499, €1234 → 123400
+ */
+function parseDutchPrice(text: string): number | null {
+  // Clean up text
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+
+  // Dutch price patterns (MUST have € symbol)
+  const patterns = [
+    /€\s?(\d{1,2})\.(\d{3}),-/,           // €1.234,-
+    /€\s?(\d{1,2})\.(\d{3}),(\d{2})/,     // €1.234,99
+    /€\s?(\d{3,4}),-/,                    // €650,-
+    /€\s?(\d{3,4}),(\d{2})/,              // €650,99
+    /€\s?(\d{3,4})/,                      // €650
+  ];
+
+  for (const pattern of patterns) {
+    const match = cleaned.match(pattern);
+    if (!match) continue;
+
+    let priceInCents: number;
+
+    if (match[3]) {
+      // Format: €1.234,99 (thousands + cents)
+      const euros = parseInt(match[1] + match[2]);
+      const cents = parseInt(match[3]);
+      priceInCents = euros * 100 + cents;
+    } else if (match[2]) {
+      // Could be: €1.234,- (thousands) OR €650,99 (cents)
+      const firstNum = parseInt(match[1]);
+      const secondNum = parseInt(match[2]);
+
+      if (secondNum < 100) {
+        // This is cents: €650,99
+        priceInCents = firstNum * 100 + secondNum;
+      } else {
+        // This is thousands: €1.234,-
+        priceInCents = (firstNum * 1000 + secondNum) * 100;
+      }
+    } else {
+      // Format: €650,- or €650
+      const euros = parseInt(match[1]);
+      priceInCents = euros * 100;
+    }
+
+    // Validate realistic price range (€10 - €50,000)
+    if (priceInCents >= 1000 && priceInCents <= 5000000) {
+      return priceInCents;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract all valid prices from page text
+ */
+function extractPricesFromText(text: string): number[] {
+  const prices: number[] = [];
+
+  // Dutch price patterns with € symbol
+  const patterns = [
+    /€\s?(\d{1,2})\.(\d{3}),-/g,           // €1.234,-
+    /€\s?(\d{1,2})\.(\d{3}),(\d{2})/g,     // €1.234,99
+    /€\s?(\d{3,4}),-/g,                    // €650,-
+    /€\s?(\d{3,4}),(\d{2})/g,              // €650,99
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const price = parseDutchPrice(match[0]);
+      if (price) {
+        prices.push(price);
+      }
+    }
+  }
+
+  return Array.from(new Set(prices)).sort((a, b) => a - b);
+}
+
+/**
+ * Axios fallback scraper with automatic Tweede Kans URL checking
  */
 async function scrapeProductDataWithAxios(productUrl: string): Promise<ProductData> {
   try {
+    console.log(`[Scraper] Fetching: ${productUrl}`);
+
     const response = await axios.get(productUrl, {
       headers: COOLBLUE_HEADERS,
       timeout: 15000,
@@ -76,8 +152,8 @@ async function scrapeProductDataWithAxios(productUrl: string): Promise<ProductDa
 
     const $ = cheerio.load(response.data);
     const html = response.data;
-    
-    // Extract product name from h1 or title
+
+    // Extract product name
     let name = $("h1").first().text().trim();
     if (!name) {
       const titleMatch = html.match(/<title>([^|]+)/);
@@ -85,229 +161,157 @@ async function scrapeProductDataWithAxios(productUrl: string): Promise<ProductDa
     }
 
     // Extract product image
-    const image = extractMainProductImage($, html);
-    
-    // Detect if this is a Tweede Kans product page
-    const isProductTweedeKansPage = productUrl.includes("/product-tweedekans/");
+    const image = extractMainProductImage($);
+
+    // Extract product ID for Tweede Kans URL
+    const productId = extractProductIdFromUrl(productUrl);
+
+    // Detect if this is already a Tweede Kans product page
+    const isTweedeKansPage = productUrl.includes("/product-tweedekans/");
 
     let tweedeKansAvailable = false;
     let originalPrice: number | undefined;
-    let currentPrice: number | undefined;
     let tweedeKansPrice: number | undefined;
 
-    // Extract all prices from the page using multiple strategies
-    const extractedPrices = extractPricesFromPage($, html);
-
-    if (isProductTweedeKansPage) {
-      // This is a Tweede Kans product page
+    if (isTweedeKansPage) {
+      // Already on Tweede Kans page - scrape both prices
+      console.log('[Scraper] This is a Tweede Kans page');
       tweedeKansAvailable = true;
 
-      // Look for price containers with specific class names or data attributes
-      const priceElements = $('[data-test="price"], .sales-price, [class*="price"]').toArray();
-      const pricesFromElements: number[] = [];
+      const prices = extractPricesFromText($.text());
 
-      priceElements.forEach((el) => {
-        const text = $(el).text();
-        const priceMatch = text.match(/€?\s*(\d{1,4})[,.]?(\d{2})?/);
-        if (priceMatch) {
-          const euros = parseInt(priceMatch[1]);
-          const cents = priceMatch[2] ? parseInt(priceMatch[2]) : 0;
-          const priceInCents = euros * 100 + cents;
-          if (priceInCents > 10000 && priceInCents < 500000) { // Between €100 and €5000
-            pricesFromElements.push(priceInCents);
-          }
-        }
-      });
-
-      // Combine with text-based extraction
-      const allPrices = Array.from(new Set([...pricesFromElements, ...extractedPrices])).sort((a, b) => a - b);
-
-      if (allPrices.length >= 2) {
-        // First price is usually Tweede Kans (lower), second is original (higher)
-        tweedeKansPrice = allPrices[0];
-        originalPrice = allPrices[1];
-      } else if (allPrices.length === 1) {
-        tweedeKansPrice = allPrices[0];
+      if (prices.length >= 2) {
+        tweedeKansPrice = prices[0]; // Lowest = Tweede Kans
+        originalPrice = prices[prices.length - 1]; // Highest = Original
+      } else if (prices.length === 1) {
+        tweedeKansPrice = prices[0];
       }
     } else {
-      // This is a regular product page
-      const pageText = $.text();
+      // Regular product page - get original price
+      console.log('[Scraper] Regular product page');
 
-      // Check if Tweede Kans is available
-      const hasTweedeKansSection =
+      const prices = extractPricesFromText($.text());
+      if (prices.length > 0) {
+        originalPrice = prices[0]; // First visible price is usually current price
+      }
+
+      // Check for Tweede Kans availability
+      // Method 1: Look for text mentions
+      const pageText = $.text();
+      const hasTweedeKansMention =
         pageText.includes("Voordelige Tweedekans") ||
         pageText.includes("Tweede Kans") ||
-        pageText.includes("tweedekans") ||
-        $('[href*="tweedekans"]').length > 0;
+        pageText.includes("tweedekans");
 
-      if (hasTweedeKansSection) {
-        tweedeKansAvailable = true;
+      // Method 2: Try to scrape the Tweede Kans URL directly
+      if (productId) {
+        const tweedeKansUrl = `https://www.coolblue.nl/product-tweedekans/${productId}/`;
+        console.log(`[Scraper] Checking Tweede Kans URL: ${tweedeKansUrl}`);
 
-        // Try to find Tweede Kans price
+        try {
+          const tkResponse = await axios.get(tweedeKansUrl, {
+            headers: COOLBLUE_HEADERS,
+            timeout: 10000,
+            maxRedirects: 5,
+            validateStatus: (status) => status < 500, // Accept 404 as valid response
+          });
+
+          if (tkResponse.status === 200) {
+            // Tweede Kans page exists!
+            tweedeKansAvailable = true;
+            console.log('[Scraper] Tweede Kans page found!');
+
+            const tk$ = cheerio.load(tkResponse.data);
+            const tkPrices = extractPricesFromText(tk$.text());
+
+            if (tkPrices.length > 0) {
+              tweedeKansPrice = tkPrices[0]; // Lowest = Tweede Kans price
+              console.log(`[Scraper] Tweede Kans price: €${(tweedeKansPrice / 100).toFixed(2)}`);
+            }
+          } else {
+            console.log(`[Scraper] Tweede Kans page returned ${tkResponse.status}`);
+          }
+        } catch (tkError) {
+          console.log('[Scraper] Tweede Kans page not accessible');
+        }
+      }
+
+      // Method 3: Parse Tweede Kans link on page
+      if (!tweedeKansAvailable && hasTweedeKansMention) {
         const tweedeKansLink = $('a[href*="tweedekans"]').first();
         if (tweedeKansLink.length) {
+          tweedeKansAvailable = true;
           const linkText = tweedeKansLink.text();
-          const priceMatch = linkText.match(/€?\s*(\d{1,4})[,.]?(\d{2})?/);
-          if (priceMatch) {
-            const euros = parseInt(priceMatch[1]);
-            const cents = priceMatch[2] ? parseInt(priceMatch[2]) : 0;
-            tweedeKansPrice = euros * 100 + cents;
+          const price = parseDutchPrice(linkText);
+          if (price) {
+            tweedeKansPrice = price;
           }
         }
       }
-
-      // Extract current/original price
-      const priceElement = $('[data-test="price"], .sales-price, [class*="product-price"]').first();
-      if (priceElement.length) {
-        const text = priceElement.text();
-        const priceMatch = text.match(/€?\s*(\d{1,4})[,.]?(\d{2})?/);
-        if (priceMatch) {
-          const euros = parseInt(priceMatch[1]);
-          const cents = priceMatch[2] ? parseInt(priceMatch[2]) : 0;
-          currentPrice = euros * 100 + cents;
-          originalPrice = currentPrice;
-        }
-      } else if (extractedPrices.length > 0) {
-        // Fallback to text extraction
-        currentPrice = extractedPrices[0];
-        originalPrice = extractedPrices[0];
-      }
     }
-    
+
+    console.log('[Scraper] Results:', {
+      name,
+      originalPrice: originalPrice ? `€${(originalPrice/100).toFixed(2)}` : 'N/A',
+      tweedeKansPrice: tweedeKansPrice ? `€${(tweedeKansPrice/100).toFixed(2)}` : 'N/A',
+      tweedeKansAvailable,
+    });
+
     return {
       name,
       image,
       originalPrice,
-      currentPrice,
       tweedeKansPrice,
       tweedeKansAvailable,
     };
   } catch (error) {
-    console.error(`Error scraping ${productUrl}:`, error);
+    console.error(`[Scraper] Error: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Failed to scrape product: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 }
 
-function extractPricesFromPage($: cheerio.CheerioAPI, html: string): number[] {
-  const prices: number[] = [];
-  const textContent = $.text();
-
-  // Remove script and SVG content to avoid false matches
-  const cleanHtml = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<svg[\s\S]*?<\/svg>/gi, "");
-  const cleanText = cheerio.load(cleanHtml).text();
-
-  // Match price patterns like €1.234,56 or €1234,- or 1.234,-
-  const pricePatterns = [
-    /€\s*(\d{1,2})\.(\d{3})[,.](\d{2})/g, // €1.234,56
-    /€\s*(\d{3,4}),-/g, // €1234,-
-    /(\d{1,2})\.(\d{3}),-/g, // 1.234,-
+function extractMainProductImage($: cheerio.CheerioAPI): string | undefined {
+  // Look for main product image
+  const selectors = [
+    "picture img",
+    "img[data-src]",
+    'img[alt*="product"]',
+    'img[alt*="Product"]',
   ];
 
-  for (const pattern of pricePatterns) {
-    let match;
-    while ((match = pattern.exec(cleanText)) !== null) {
-      let priceInCents: number;
-
-      if (match[1] && match[2] && match[3]) {
-        // Format: €1.234,56
-        const euros = parseInt(match[1] + match[2]);
-        const cents = parseInt(match[3]);
-        priceInCents = euros * 100 + cents;
-      } else if (match[1] && !match[2]) {
-        // Format: €1234,-
-        const euros = parseInt(match[1]);
-        priceInCents = euros * 100;
-      } else if (match[1] && match[2]) {
-        // Format: 1.234,-
-        const euros = parseInt(match[1] + match[2]);
-        priceInCents = euros * 100;
-      } else {
-        continue;
-      }
-
-      // Filter reasonable product prices (€100 to €10,000)
-      if (priceInCents >= 10000 && priceInCents <= 1000000) {
-        prices.push(priceInCents);
-      }
+  for (const selector of selectors) {
+    const img = $(selector).first();
+    const src = img.attr("src") || img.attr("data-src");
+    if (src && !src.includes("employee")) {
+      return src.startsWith("http") ? src : `https://www.coolblue.nl${src}`;
     }
   }
 
-  // Return unique prices sorted ascending
-  return Array.from(new Set(prices)).sort((a, b) => a - b);
+  return undefined;
 }
 
-function extractMainProductImage($: cheerio.CheerioAPI, html: string): string | undefined {
-  // Look for main product image - typically in a picture tag or specific img elements
-  let imageUrl: string | undefined;
-
-  // Try to find image in picture tag (most reliable)
-  const pictureImg = $("picture img").first().attr("src");
-  if (pictureImg && !pictureImg.includes("employee")) {
-    imageUrl = pictureImg;
-  }
-
-  // If not found, try to find image with data-src attribute (lazy loading)
-  if (!imageUrl) {
-    const lazyImg = $("img[data-src]").first().attr("data-src");
-    if (lazyImg && !lazyImg.includes("employee")) {
-      imageUrl = lazyImg;
-    }
-  }
-
-  // Try to find main product image by looking for images with product-related alt text
-  if (!imageUrl) {
-    $("img").each((_, el) => {
-      const src = $(el).attr("src") || $(el).attr("data-src") || "";
-      const alt = $(el).attr("alt") || "";
-
-      // Skip employee/service images
-      if (
-        src &&
-        !src.includes("employee") &&
-        !alt.includes("employee") &&
-        (alt.toLowerCase().includes("main") ||
-          alt.toLowerCase().includes("product") ||
-          alt.toLowerCase().includes("samsung"))
-      ) {
-        imageUrl = src;
-        return false; // break
-      }
-    });
-  }
-
-  // Make sure URL is absolute
-  if (imageUrl && !imageUrl.startsWith("http")) {
-    imageUrl = "https://www.coolblue.nl" + imageUrl;
-  }
-
-  return imageUrl;
-}
-
-export async function extractProductIdFromUrl(url: string): Promise<string | null> {
-  // Coolblue URLs typically have format: /product/{id}/ or /product-tweedekans/{id}/
+export function extractProductIdFromUrl(url: string): string | null {
+  // Coolblue URLs: /product/{id}/ or /product-tweedekans/{id}/
   const match = url.match(/\/product(?:-tweedekans)?\/(\d+)\//);
   return match ? match[1] : null;
 }
 
 export async function testScraper(urls: string[]): Promise<void> {
-  console.log("Testing scraper with provided URLs...\n");
-  
+  console.log("Testing scraper...\n");
+
   for (const url of urls) {
     try {
-      console.log(`Testing: ${url}`);
+      console.log(`\nTesting: ${url}`);
       const data = await scrapeProductData(url);
       console.log("Result:", {
         name: data.name,
         tweedeKansAvailable: data.tweedeKansAvailable,
-        originalPrice: data.originalPrice ? `€${data.originalPrice}` : "N/A",
-        currentPrice: data.currentPrice ? `€${data.currentPrice}` : "N/A",
-        tweedeKansPrice: data.tweedeKansPrice ? `€${data.tweedeKansPrice}` : "N/A",
+        originalPrice: data.originalPrice ? `€${(data.originalPrice/100).toFixed(2)}` : "N/A",
+        tweedeKansPrice: data.tweedeKansPrice ? `€${(data.tweedeKansPrice/100).toFixed(2)}` : "N/A",
         image: data.image ? "✓" : "✗",
       });
-      console.log("---\n");
     } catch (error) {
-      console.error(`Error testing ${url}:`, error);
-      console.log("---\n");
+      console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
