@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { scrapeProductDataHybrid, fetchPageHTML } from "./scraper-hybrid";
 
 export interface ProductData {
   name: string;
@@ -38,28 +39,43 @@ const COOLBLUE_HEADERS = {
 };
 
 /**
- * Main scraper function - tries Playwright first, falls back to Axios
+ * Main scraper: Playwright first, then hybrid, then Axios
  */
 export async function scrapeProductData(productUrl: string): Promise<ProductData> {
-  // Try Playwright first (most reliable)
+  // Try Playwright first (best for JS-heavy sites)
   if (playwrightScraper) {
     try {
-      console.log('[Scraper] Using Playwright scraper (primary)');
+      console.log('[Scraper] Using Playwright (primary)');
       const data = await playwrightScraper.scrapeProductData(productUrl);
 
-      // Validate we got useful data
-      if (data.name && data.name !== 'Unknown Product') {
+      if (data.name && data.name !== 'Unknown Product' && data.currentPrice) {
+        console.log('[Scraper] Playwright success');
         return data;
       }
 
-      console.log('[Scraper] Playwright returned incomplete data, trying fallback...');
+      console.log('[Scraper] Playwright incomplete, trying hybrid...');
     } catch (error) {
       console.error('[Scraper] Playwright failed:', error instanceof Error ? error.message : String(error));
-      console.log('[Scraper] Falling back to Axios scraper...');
     }
   }
 
-  // Fallback to Axios scraper
+  // Try hybrid scraper second (regex + LLM)
+  try {
+    console.log('[Scraper] Using hybrid (secondary)');
+    const html = await fetchPageHTML(productUrl);
+    const data = await scrapeProductDataHybrid(productUrl, html);
+    
+    if (data.name && data.name !== 'Unknown' && data.currentPrice) {
+      console.log('[Scraper] Hybrid success');
+      return data;
+    }
+    
+    console.log('[Scraper] Hybrid incomplete, trying Axios...');
+  } catch (error) {
+    console.error('[Scraper] Hybrid failed:', error instanceof Error ? error.message : String(error));
+  }
+
+  // Fallback to Axios
   return scrapeProductDataWithAxios(productUrl);
 }
 

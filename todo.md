@@ -110,5 +110,17 @@
 - [x] Repareer TypeScript import errors
 - [x] Installeer Playwright browsers
 - [x] Alle 12 tests slagen
-- [ ] Test Playwright scraper met Samsung producten
-- [ ] Valideer prijs-extractie (normale prijs, Tweede Kans prijs)
+- [x] Test Playwright scraper met Samsung producten
+- [x] Valideer prijs-extractie (normale prijs, Tweede Kans prijs)
+
+
+## Phase 7: Hybrid Scraper & Scraper Priority
+- [x] Implementeer hybrid scraper (regex + JSON + LLM fallback)
+- [x] Voeg JSON-LD extractie toe
+- [x] Voeg LLM fallback toe voor complexe cases
+- [x] Wijzig scraper priority: Playwright > Hybrid > Axios
+- [x] Test met Samsung producten
+- [x] Valideer dat Playwright correct prijzen extraheert
+- [ ] Implementeer auto-fetch bij product toevoegen
+- [ ] Fix dashboard UI layout (buttons buiten grid)
+- [ ] Voeg immediate status check toe na product add
