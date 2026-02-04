@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, productName, originalPrice, tweedeKansPrice FROM monitored_products;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4ViXnZny4krviXQ.root --database Gcsn6a9hnw5RKcSaLGScrj --execute SELECT id, productName, originalPrice, tweedeKansPrice FROM monitored_products;",
+  "rows": [
+    {
+      "id": "60001",
+      "productName": "Samsung NQ5B4553FBK",
+      "originalPrice": "650",
+      "tweedeKansPrice": "120600"
+    },
+    {
+      "id": "60002",
+      "productName": "Samsung DV90DB7845GBU3 Bespoke QuickDrive",
+      "originalPrice": "969",
+      "tweedeKansPrice": "847"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tproductName\toriginalPrice\ttweedeKansPrice\n60001\tSamsung NQ5B4553FBK\t650\t120600\n60002\tSamsung DV90DB7845GBU3 Bespoke QuickDrive\t969\t847\n",
+  "stderr": "",
+  "execution_time_ms": 77
+}

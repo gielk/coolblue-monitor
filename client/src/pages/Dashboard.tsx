@@ -9,32 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Trash2, Edit2, RefreshCw, Plus, CheckCircle2, Clock, AlertTriangle, Zap } from "lucide-react";
+import { AlertCircle, Trash2, Edit2, RefreshCw, Plus, CheckCircle2, Clock, AlertTriangle, Zap, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { PriceChart } from "@/components/PriceChart";
 import { NotificationCenter } from "@/components/NotificationCenter";
 
 export default function Dashboard() {
-  const { user, isAuthenticated, loading } = useAuth({
-    redirectOnUnauthenticated: true,
-    redirectPath: getLoginUrl(),
-  });
-  const [, navigate] = useLocation();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="animate-spin">
-          <Clock className="w-8 h-8 text-blue-600" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user) {
-    return null;
-  }
+  // All hooks MUST be at the top, before any conditionals
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [selectedProductForChart, setSelectedProductForChart] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -42,6 +24,12 @@ export default function Dashboard() {
     userEmail: "",
     checkIntervalMinutes: 60,
   });
+
+  const { user, isAuthenticated, loading } = useAuth({
+    redirectOnUnauthenticated: true,
+    redirectPath: getLoginUrl(),
+  });
+  const [, navigate] = useLocation();
 
   const utils = trpc.useUtils();
   const { data: products, isLoading } = trpc.products.list.useQuery(undefined, {
@@ -94,6 +82,20 @@ export default function Dashboard() {
       toast.error(`Fout bij vernieuwen: ${error.message}`);
     },
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="animate-spin">
+          <Clock className="w-8 h-8 text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return (
@@ -268,7 +270,18 @@ export default function Dashboard() {
                         <CardTitle className="text-lg line-clamp-2">{product.productName || "Product"}</CardTitle>
                         <CardDescription className="text-xs mt-1 line-clamp-1">{product.productUrl}</CardDescription>
                       </div>
-                      {getStatusBadge(product)}
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={product.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Open bij Coolblue"
+                        >
+                          <ExternalLink className="w-5 h-5 text-slate-600 hover:text-blue-600" />
+                        </a>
+                        {getStatusBadge(product)}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4 flex-1">

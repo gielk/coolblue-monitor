@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE monitored_products SET originalPrice = originalPrice * 100, tweedeKansPrice = tweedeKansPrice * 100 WHERE originalPrice < 1000 AND originalPrice IS NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4ViXnZny4krviXQ.root --database Gcsn6a9hnw5RKcSaLGScrj --execute UPDATE monitored_products SET originalPrice = originalPrice * 100, tweedeKansPrice = tweedeKansPrice * 100 WHERE originalPrice < 1000 AND originalPrice IS NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 66
+}

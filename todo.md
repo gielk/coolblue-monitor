@@ -124,3 +124,13 @@
 - [ ] Implementeer auto-fetch bij product toevoegen
 - [ ] Fix dashboard UI layout (buttons buiten grid)
 - [ ] Voeg immediate status check toe na product add
+
+
+## Phase 8: Bug Fixes - Price Display & Coolblue Link
+- [x] Fix React hooks violation in Dashboard (hooks must be before conditionals)
+- [x] Fix prijs-weergave (dubbele deling door 100: €650 toont als €6.50)
+- [x] Voeg "Open bij Coolblue" icon (ExternalLink) toe aan product cards
+- [x] Test prijs-weergave met Samsung producten
+- [x] Valideer dat links naar juiste Coolblue pagina's gaan
+- [x] Verbeter scraper price detection (use largest valid price)
+- [x] Database prices nu correct: €650 en €999
