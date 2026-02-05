@@ -134,3 +134,11 @@
 - [x] Valideer dat links naar juiste Coolblue pagina's gaan
 - [x] Verbeter scraper price detection (use largest valid price)
 - [x] Database prices nu correct: €650 en €999
+
+
+## Phase 9: Critical Bug Fixes - UI Layout & Price Display
+- [x] Fix UI layout - "Beschikbaar" badge en "Open" knop vallen buiten grid
+- [x] Fix price display - prijzen tonen foutief (€6.50 i.p.v. €650)
+- [x] Verify product card layout is responsive
+- [x] Test on different screen sizes
+- [x] All prices now display correctly: €650, €969, €585, €847

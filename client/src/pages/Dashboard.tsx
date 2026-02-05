@@ -264,21 +264,21 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product) => (
                 <Card key={product.id} className="border-slate-200 hover:shadow-lg transition-shadow flex flex-col">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <div className="flex-1 min-w-0">
                         <CardTitle className="text-lg line-clamp-2">{product.productName || "Product"}</CardTitle>
                         <CardDescription className="text-xs mt-1 line-clamp-1">{product.productUrl}</CardDescription>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <a
                           href={product.productUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                           title="Open bij Coolblue"
                         >
-                          <ExternalLink className="w-5 h-5 text-slate-600 hover:text-blue-600" />
+                          <ExternalLink className="w-4 h-4 text-slate-600 hover:text-blue-600" />
                         </a>
                         {getStatusBadge(product)}
                       </div>
