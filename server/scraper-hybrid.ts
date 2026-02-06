@@ -43,9 +43,10 @@ export async function scrapeProductDataHybrid(
     // Look for patterns like "price":650 or "price": 650
     const priceJsonMatch = htmlContent.match(/"price"\s*:\s*(\d+)/);
     if (priceJsonMatch) {
-      currentPrice = parseInt(priceJsonMatch[1]);
+      const priceInEuros = parseInt(priceJsonMatch[1]);
+      currentPrice = priceInEuros * 100; // Convert to cents
       console.log(
-        `[Hybrid Scraper] Extracted price from JSON: ${currentPrice}`
+        `[Hybrid Scraper] Extracted price from JSON: €${priceInEuros} = ${currentPrice} cents`
       );
     }
 
@@ -65,9 +66,9 @@ export async function scrapeProductDataHybrid(
       if (tkPriceMatch) {
         const price = tkPriceMatch[1] || tkPriceMatch[2];
         if (price) {
-          tweedeKansPrice = parseInt(price);
+          tweedeKansPrice = parseInt(price) * 100; // Convert to cents
           console.log(
-            `[Hybrid Scraper] Extracted Tweede Kans price: ${tweedeKansPrice}`
+            `[Hybrid Scraper] Extracted Tweede Kans price: €${price} = ${tweedeKansPrice} cents`
           );
         }
       }
@@ -102,7 +103,10 @@ export async function scrapeProductDataHybrid(
       "[Hybrid Scraper] Error:",
       error instanceof Error ? error.message : "Unknown error"
     );
-    throw error;
+    return {
+      name: "Unknown",
+      tweedeKansAvailable: false,
+    };
   }
 }
 
@@ -120,12 +124,13 @@ async function scrapeWithLLMFallback(
     const prompt = `Extract prices from this Coolblue HTML.
 
 FIND:
-1. Current price (main price, number only, e.g. 650 not "650,-")
-2. Tweede Kans price (if exists, number only)
+1. Current price (main price, in CENTS, e.g. 65000 for €650)
+2. Tweede Kans price (if exists, in CENTS)
 3. Is Tweede Kans available (true/false)
 
 RULES:
-- Prices shown as "650,-" extract as 650
+- Prices shown as "650,-" should be returned as 65000 (cents)
+- Prices shown as "650,99" should be returned as 65099 (cents)
 - Current price is main price shown prominently
 - Tweede Kans price after "Voordelige Tweedekans" text
 - Return null if not found
@@ -159,10 +164,22 @@ Return ONLY JSON:
 
     const data = JSON.parse(jsonMatch[0]);
 
+    // Ensure prices are in cents
+    let currentPrice = data.currentPrice;
+    let tweedeKansPrice = data.tweedeKansPrice;
+
+    // If prices are returned in euros (< 1000), convert to cents
+    if (currentPrice && currentPrice < 1000) {
+      currentPrice = currentPrice * 100;
+    }
+    if (tweedeKansPrice && tweedeKansPrice < 1000) {
+      tweedeKansPrice = tweedeKansPrice * 100;
+    }
+
     return {
       name: "Unknown",
-      currentPrice: data.currentPrice || undefined,
-      tweedeKansPrice: data.tweedeKansPrice || undefined,
+      currentPrice: currentPrice || undefined,
+      tweedeKansPrice: tweedeKansPrice || undefined,
       tweedeKansAvailable: data.tweedeKansAvailable || false,
     };
   } catch (error) {
@@ -198,14 +215,9 @@ export async function fetchPageHTML(url: string): Promise<string> {
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const html = await response.text();
-    console.log(`[Hybrid Scraper] Fetched ${html.length} bytes`);
-    return html;
+    return await response.text();
   } catch (error) {
-    console.error(
-      "[Hybrid Scraper] Fetch error:",
-      error instanceof Error ? error.message : "Unknown error"
-    );
+    console.error("[Hybrid Scraper] Failed to fetch HTML:", error);
     throw error;
   }
 }

@@ -142,3 +142,11 @@
 - [x] Verify product card layout is responsive
 - [x] Test on different screen sizes
 - [x] All prices now display correctly: €650, €969, €585, €847
+
+## Phase 10: API Error Fix & Scraper Improvements
+- [x] Fix tRPC error - getMonitoredProducts missing await
+- [x] Fix hybrid scraper - prices now in cents (multiply by 100)
+- [x] Fix LLM fallback - prompt updated for cents, parsing fixed
+- [x] All 12 tests pass
+- [x] Dashboard loads without errors
+- [x] Prices display correctly after fixes

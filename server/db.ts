@@ -114,7 +114,7 @@ export async function getUserProducts(userId: number) {
 export async function getMonitoredProducts(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(monitoredProducts).where(eq(monitoredProducts.userId, userId)).orderBy((t) => t.createdAt);
+  return await db.select().from(monitoredProducts).where(eq(monitoredProducts.userId, userId)).orderBy((t) => t.createdAt);
 }
 
 export async function getMonitoredProductById(productId: number, userId: number) {
