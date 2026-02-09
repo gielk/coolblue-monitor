@@ -150,3 +150,12 @@
 - [x] All 12 tests pass
 - [x] Dashboard loads without errors
 - [x] Prices display correctly after fixes
+
+
+## Phase 11: Login Loop Bug Fix - Session Cookie Configuration
+- [x] Diagnose login loop on published version (mobile)
+- [x] Fix cookie domain configuration (uncommented domain logic)
+- [x] Change sameSite from "none" to "lax" for better mobile compatibility
+- [x] Update auth.logout.test.ts to expect sameSite: "lax"
+- [x] All 12 tests pass
+- [x] Login should now work on published version
