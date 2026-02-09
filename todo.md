@@ -159,3 +159,11 @@
 - [x] Update auth.logout.test.ts to expect sameSite: "lax"
 - [x] All 12 tests pass
 - [x] Login should now work on published version
+
+
+## Phase 12: Database Synchronous Access Error Fix
+- [x] Fixed context.ts - use getDb() instead of db
+- [x] Fixed oauth.ts - use upsertUser() directly instead of db.upsertUser()
+- [x] Fixed sdk.ts - use getUserByOpenId() and upsertUser() directly
+- [x] All 12 tests pass
+- [x] Console error "Use getDb() instead of db" resolved

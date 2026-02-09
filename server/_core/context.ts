@@ -1,7 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
-import { db } from "../db";
+import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -12,6 +12,9 @@ export type TrpcContext = {
 };
 
 async function getOrCreateDefaultUser(): Promise<User> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   // Check if default user exists
   const existingUser = await db.select().from(users).where(eq(users.openId, "local-user")).limit(1);
 
